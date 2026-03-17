@@ -1,0 +1,59 @@
+`timescale 1ns / 1ps
+
+module testbench;
+    
+    logic clk;
+    logic rst_n;
+
+    // 1ns period clock
+    initial clk = 0;
+    always #1 clk = ~clk;
+
+    // Select environment via macro TEST_ENV
+     // --------------------------------------------------
+    // Test environment selection (compile-time)
+    // --------------------------------------------------
+    `ifdef USE_AXIS_REGISTER
+        test_axis_register test_axis_reg_u0(.clk  (clk),
+                                            .rst_n (rst_n)
+                                           );
+    `elsif USE_AXIS_FIFO
+        test_axis_fifo test_axis_fifo_u0 (.clk  (clk),
+                                          .rst_n (rst_n)
+                                         );
+    `elsif USE_AXIL_REGISTER
+        test_axil_register test_axil_register_u0 (.clk   (clk),
+                                                  .rst_n (rst_n)
+                                                 );
+    `elsif USE_DMA_TEST
+       test_dma test_dma_u0 (.clk   (clk),
+                             .rst_n (rst_n)
+                            );
+    `elsif USE_CDMA_TEST
+        test_cdma test_cdma_u0 (.clk   (clk),
+                                .rst_n (rst_n)
+                               );
+    `elsif USE_AXIS_AFIFO
+        test_axis_afifo test_axis_afifo_u0 (.clk   (clk),
+                                            .rst_n (rst_n)
+                                           );
+    `else
+        initial begin
+            $fatal(1, "No test environment selected. Define USE_AXIS_ENV or USE_AXI_ENV.");
+        end
+    `endif
+
+    initial begin
+        rst_n = 1;
+        drive_reset();
+    end
+
+    task drive_reset();
+        @(posedge clk);
+        rst_n = 0;
+        repeat (2) @(posedge clk);
+        rst_n = 1;
+        @(posedge clk);
+    endtask
+
+endmodule

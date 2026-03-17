@@ -1,0 +1,37 @@
+# ==================================================
+# Help target
+# ==================================================
+.PHONY: help
+
+help:
+	@echo "Usage:"
+	@echo "  make [TARGET] [OPTIONS]"
+	@echo ""
+	@echo "Simulation targets:"
+	@echo "  run        Build and run simulation"
+	@echo "  clean      Remove build artifacts (obj_dir)"
+	@echo "  cleanall   Remove build + work directory"
+	@echo ""
+	@echo "Simulation options:"
+	@echo "  TESTNAME=axis_register|axis_fifo|axil_register|dma|cdma"
+	@echo "  FRAME_FIFO=0|1   axis_fifo: 0=streaming (default), 1=store-and-forward"
+	@echo "  SRC_BP=0|1        Source backpressure (axis tests)"
+	@echo "  SINK_BP=0|1       Sink backpressure (axis tests)"
+	@echo "  TESTTYPE=N        Test scenario (dma: 0-4, cdma: 0-3)"
+	@echo "  READY_PROB=0-100  AXI slave ready probability (dma/cdma)"
+	@echo "  OBJ_DIR=path      Build directory override (useful for Docker/WSL2)"
+	@echo ""
+	@echo "Synthesis targets (Yosys):"
+	@echo "  synth      Synthesize one design"
+	@echo "  synth-all  Synthesize all designs"
+	@echo ""
+	@echo "Synthesis options:"
+	@echo "  SYNTH_NAME=axis_register|axis_fifo|axis_fifo_pkt|axis_afifo|axis_afifo_pkt|axil_register|dma|cdma"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make run  TESTNAME=axis_fifo FRAME_FIFO=1 SRC_BP=1 SINK_BP=1"
+	@echo "  make run  TESTNAME=dma TESTTYPE=3 READY_PROB=70"
+	@echo "  make synth SYNTH_NAME=cdma"
+	@echo "  make synth-all"
+	@echo "  scripts/sweep.sh sim"
+	@echo "  scripts/sweep.sh synth both"

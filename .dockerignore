@@ -1,0 +1,8 @@
+.git
+.github
+.claude
+obj_dir
+work
+.DS_Store
+*.swp
+*.swo

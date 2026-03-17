@@ -1,0 +1,18 @@
+# Verilator build artifacts
+obj_dir/
+
+# Simulation outputs (logs, FST waveforms)
+work/
+
+# macOS
+.DS_Store
+._*
+
+# Editor artifacts
+*.swp
+*.swo
+.vscode/
+.claude/
+
+# Local backups / scratch files
+*.bkp

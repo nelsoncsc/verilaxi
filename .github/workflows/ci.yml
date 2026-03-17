@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  simulate:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y verilator yosys
+          verilator --version
+          yosys --version
+
+      # ── AXI-Stream register ────────────────────────────────────────────────
+      - name: axis_register  (no backpressure)
+        run: make clean run TESTNAME=axis_register SRC_BP=0 SINK_BP=0
+
+      - name: axis_register  (full backpressure)
+        run: make clean run TESTNAME=axis_register SRC_BP=1 SINK_BP=1
+
+      # ── AXI-Stream FIFO ───────────────────────────────────────────────────
+      - name: axis_fifo  (streaming, no backpressure)
+        run: make clean run TESTNAME=axis_fifo FRAME_FIFO=0 SRC_BP=0 SINK_BP=0
+
+      - name: axis_fifo  (streaming, full backpressure)
+        run: make clean run TESTNAME=axis_fifo FRAME_FIFO=0 SRC_BP=1 SINK_BP=1
+
+      - name: axis_fifo  (frame mode, no backpressure)
+        run: make clean run TESTNAME=axis_fifo FRAME_FIFO=1 SRC_BP=0 SINK_BP=0
+
+      - name: axis_fifo  (frame mode, full backpressure)
+        run: make clean run TESTNAME=axis_fifo FRAME_FIFO=1 SRC_BP=1 SINK_BP=1
+
+      # ── AXI-Stream Async FIFO ────────────────────────────────────────────
+      - name: axis_afifo  (streaming, TESTTYPE=1, no backpressure)
+        run: make clean run TESTNAME=axis_afifo FRAME_FIFO=0 TESTTYPE=1 SRC_BP=0 SINK_BP=0
+
+      - name: axis_afifo  (streaming, TESTTYPE=1, full backpressure)
+        run: make clean run TESTNAME=axis_afifo FRAME_FIFO=0 TESTTYPE=1 SRC_BP=1 SINK_BP=1
+
+      - name: axis_afifo  (streaming, TESTTYPE=2, full backpressure)
+        run: make clean run TESTNAME=axis_afifo FRAME_FIFO=0 TESTTYPE=2 SRC_BP=1 SINK_BP=1
+
+      - name: axis_afifo  (frame mode, TESTTYPE=1, full backpressure)
+        run: make clean run TESTNAME=axis_afifo FRAME_FIFO=1 TESTTYPE=1 SRC_BP=1 SINK_BP=1
+
+      # ── AXI-Lite register ─────────────────────────────────────────────────
+      - name: axil_register
+        run: make clean run TESTNAME=axil_register
+
+      # ── AXI DMA ───────────────────────────────────────────────────────────
+      - name: dma  (TESTTYPE=0 write abort)
+        run: make clean run TESTNAME=dma TESTTYPE=0
+
+      - name: dma  (TESTTYPE=0 write abort, READY_PROB=80)
+        run: make clean run TESTNAME=dma TESTTYPE=0 READY_PROB=80
+
+      - name: dma  (TESTTYPE=2 four frames, READY_PROB=50)
+        run: make clean run TESTNAME=dma TESTTYPE=2 READY_PROB=50
+
+      - name: dma  (TESTTYPE=3 4KB boundary, READY_PROB=70)
+        run: make clean run TESTNAME=dma TESTTYPE=3 READY_PROB=70
+
+      - name: dma  (TESTTYPE=4 circular, READY_PROB=100)
+        run: make clean run TESTNAME=dma TESTTYPE=4
+
+      - name: dma  (TESTTYPE=4 circular, READY_PROB=80)
+        run: make clean run TESTNAME=dma TESTTYPE=4 READY_PROB=80
+
+      # ── AXI CDMA ──────────────────────────────────────────────────────────
+      - name: cdma  (TESTTYPE=1 4KB boundary, READY_PROB=100)
+        run: make clean run TESTNAME=cdma TESTTYPE=1
+
+      - name: cdma  (TESTTYPE=2 four frames, READY_PROB=70)
+        run: make clean run TESTNAME=cdma TESTTYPE=2 READY_PROB=70
+
+      - name: cdma  (TESTTYPE=0 basic aligned, READY_PROB=50)
+        run: make clean run TESTNAME=cdma TESTTYPE=0 READY_PROB=50
+
+      # ── Synthesis (Yosys) ─────────────────────────────────────────────────
+      - name: synth-all (generic)
+        run: make synth-all SYNTH_TARGET=generic
+
+      - name: synth-all (artix7)
+        run: make synth-all SYNTH_TARGET=artix7
+
+      # ── Upload logs on failure ────────────────────────────────────────────
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: work/

@@ -1,0 +1,17 @@
+rtl/common/snix_register_slice.sv
+rtl/common/snix_sync_fifo.sv
+rtl/common/snix_async_fifo.sv
+
+rtl/axis/snix_axis_register.sv
+rtl/axis/snix_axis_fifo.sv
+rtl/axis/snix_axis_afifo.sv
+
+rtl/axil/snix_axil_register.sv
+rtl/axil/snix_axi_dma_csr.sv
+rtl/axil/snix_axi_cdma_csr.sv
+
+rtl/axi/snix_axi_s2mm.sv
+rtl/axi/snix_axi_mm2s.sv
+rtl/axi/snix_axi_mm2mm.sv
+rtl/axi/snix_axi_dma.sv
+rtl/axi/snix_axi_cdma.sv
