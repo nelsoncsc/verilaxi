@@ -161,16 +161,6 @@ The simulation sweep covers the AXIS register/FIFO/AFIFO matrices, `axil_registe
 
 ## Acknowledgements
 
-This repository is a personal learning project and part of my ongoing journey to understand the mechanics behind AXI, DMA engines, buffering, CDC, and flow control in depth.
+This project was developed independently. Credit is due to the wider open-source AXI community for helping shape good engineering practice around AXI design and verification. In particular, ZipCPU's AXI articles and examples, together with Alex Forencich's AXI and AXI-Stream component work, were useful sources of inspiration and reference.
 
-All code in this repository was written by me in SystemVerilog. It does not use code from my current or previous employers, and it was developed independently in my own spare time as a hobby and learning exercise.
-
-Some design ideas were informed by prior open-source work:
-- `axis_register`, `axil_register`, `snix_sync_fifo`, and `snix_async_fifo` were developed in SystemVerilog with substantial inspiration from ZipCPU's AXI and FIFO work.
-- The idea of AXI-Stream FIFO packet/frame mode behavior was informed by Alex Forencich's AXI Stream component ecosystem.
-
-These acknowledgements are about design inspiration and learning lineage, not code reuse.
-
-## Development Notes
-
-AI tools, including GPT and Claude, were used as auxiliary tools for debugging, scripting, and documentation support.
+This repository does not use code from my current or previous employers; rather, it is a summary of my learnings during my spare time. AI tools were used as auxiliary tools for debugging, scripting, and documentation support.

@@ -4,6 +4,7 @@
 .PHONY: run clean cleanall
 
 $(OBJ_DIR)/V$(TOP_NAME): $(SIM_CPP)
+	@mkdir -p $(OBJ_DIR)
 	verilator -Wall --assert \
 		-Wno-UNUSEDSIGNAL -Wno-EOFNEWLINE -Wno-WIDTHTRUNC -Wno-DECLFILENAME \
 		-Wno-SYNCASYNCNET \
