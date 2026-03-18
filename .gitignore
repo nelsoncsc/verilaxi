@@ -16,3 +16,9 @@ work/
 
 # Local backups / scratch files
 *.bkp
+
+# Local drafts / unpublished experiments
+DMA.drawio
+ideas/
+rtl/common/snix_rr_arbiter.sv
+tb/tests/common/
