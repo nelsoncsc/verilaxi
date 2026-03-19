@@ -1,3 +1,11 @@
+// ============================================================================
+//  snix_axil_register.sv
+//
+//  SystemVerilog implementation of an AXI-Lite register slave.
+//
+//  Largely based on ZipCPU's implementation and tutorial:
+//    https://zipcpu.com/blog/2020/03/08/easyaxil.html
+// ============================================================================
 module snix_axil_register #(parameter DATA_WIDTH = 32,
                             parameter ADDR_WIDTH = 4,
                             parameter NUM_REGS   = 16)

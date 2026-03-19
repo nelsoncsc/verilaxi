@@ -1,3 +1,12 @@
+// ============================================================================
+//  snix_async_fifo.sv
+//
+//  SystemVerilog implementation of an async FIFO. If targeting FPGAs, this
+//  implementation is intended to infer BRAM.
+//
+//  Largely based on ZipCPU's async FIFO work:
+//    https://zipcpu.com/blog/2018/07/06/afifo.html
+// ============================================================================
 module snix_async_fifo #(parameter DATA_WIDTH = 8,
 		                 parameter FIFO_DEPTH = 4)
                         (input  logic                  wclk,

@@ -895,6 +895,8 @@ Run a simulation from the container:
 docker run --rm -it -v "$PWD":/workspace -w /workspace verilaxi \
   make run OBJ_DIR=work/obj_dir_linux TESTNAME=axis_afifo FRAME_FIFO=1 TESTTYPE=1 SRC_BP=1 SINK_BP=1
 ```
+![AXI-Stream Async FIFO TESTYPE=1](docs/cdc_t1.png)
+![AXI-Stream Async FIFO TESTYPE=2](docs/cdc_t2.png)
 
 Run synthesis:
 

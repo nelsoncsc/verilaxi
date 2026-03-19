@@ -7,6 +7,9 @@
 //  A secondary "skid" register absorbs one beat when the downstream stalls,
 //  so the upstream never sees tready deassert combinationally from the
 //  downstream — breaking timing paths between producer and consumer.
+//
+//  Reference:
+//    https://zipcpu.com/blog/2019/05/22/skidbuffer.html
 // ============================================================================
 module snix_axis_register #(
     parameter int DATA_WIDTH = 8,
