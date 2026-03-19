@@ -43,6 +43,13 @@ verilaxi/
 
 ## 🚀 Getting Started
 
+### Clone
+
+```bash
+git clone https://github.com/nelsoncsc/verilaxi.git
+cd verilaxi
+```
+
 ### Requirements
 
 - Verilator ≥ 5.x

@@ -864,6 +864,13 @@ The `axil_lock` semaphore serialises AXI-Lite register accesses.
 - **Make**
 - **Docker** (optional, recommended for reproducible Linux runs on macOS/Linux/WSL2)
 
+Clone the repository:
+
+```bash
+git clone https://github.com/nelsoncsc/verilaxi.git
+cd verilaxi
+```
+
 Verify your Verilator version:
 
 ```bash
