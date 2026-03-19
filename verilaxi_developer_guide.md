@@ -858,7 +858,7 @@ The `axil_lock` semaphore serialises AXI-Lite register accesses.
 
 ### 7.1 Prerequisites
 
-- **Verilator** ≥ 5.x with coroutine support (`-CFLAGS "-fcoroutines"` is required)
+- **Verilator** `5.046` with coroutine support (`-CFLAGS "-fcoroutines"` is required)
 - **C++17** compiler (GCC or Clang)
 - **GTKWave** or **Surfer** (optional, for waveform viewing)
 - **Make**
@@ -876,6 +876,8 @@ Verify your Verilator version:
 ```bash
 verilator --version
 ```
+
+This repository is validated against `Verilator 5.046`. Older packaged `5.x` releases may fail to parse or build parts of the testbench and should not be assumed to work.
 
 ### Docker Workflow
 

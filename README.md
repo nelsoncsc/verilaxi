@@ -52,9 +52,11 @@ cd verilaxi
 
 ### Requirements
 
-- Verilator ≥ 5.x
+- Verilator 5.046
 - SystemVerilog support enabled
 - Surfer (recommended) or GTKWave for FST viewing
+
+This repository is validated against `Verilator 5.046`. Older packaged `5.x` releases may fail to parse or build parts of the testbench and should not be assumed to work.
 
 ---
 ### 🧪 Example: AXI Write / Read
