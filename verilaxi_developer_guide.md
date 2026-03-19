@@ -274,6 +274,8 @@ An AXI4-Stream-compliant synchronous FIFO, used internally by both the S2MM and 
 
 An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent source and sink clocks. Like `snix_axis_fifo`, it transports `tdata`, `tuser`, and `tlast`, but it uses `snix_async_fifo` internally and exposes separate `s_axis_clk` and `m_axis_clk` domains.
 
+![AXI-Stream Async FIFO](docs/cdc_fifo.svg)
+
 **Parameters**
 
 | Parameter    | Default | Description                                                      |
