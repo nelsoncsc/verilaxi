@@ -21,7 +21,7 @@ It provides simple, task-based **AXI**, **AXI-Lite**, and **AXI-Stream** drivers
 
 ## Related Articles
 
-These Sistenix posts are the narrative layer for the repository. The intent is that a reader can understand the design choices in the blog, then inspect the exact RTL, VIP, and testbench code here in `verilaxi`.
+These sistenix posts are the narrative layer for the repository. The intent is that a reader can understand the design choices in the blog, then inspect the exact RTL, VIP, and testbench code here in `verilaxi`.
 
 - [Synchronous and Asynchronous FIFOs](https://sistenix.com/fifo_cdc.html) — sync FIFO flags, async FIFO Gray pointers, CDC headroom, and AXI-Stream async FIFO framing
 - [AXI DMA: Moving Data Without the CPU](https://sistenix.com/axi_dma.html) — S2MM/MM2S and CDMA architecture, 4KB boundary handling, partial strobes, circular mode, and throughput
