@@ -19,6 +19,18 @@ It provides simple, task-based **AXI**, **AXI-Lite**, and **AXI-Stream** drivers
 - ✅ Clean Makefile-driven test selection with interactive menu
 - ✅ SVA protocol checkers for AXI4-Full, AXI-Lite, and AXI-Stream, plus 4KB AXI burst-boundary checks (Verilator `--assert`)
 
+## Related Articles
+
+These Sistenix posts are the narrative layer for the repository. The intent is that a reader can understand the design choices in the blog, then inspect the exact RTL, VIP, and testbench code here in `verilaxi`.
+
+- [Synchronous and Asynchronous FIFOs](https://sistenix.com/fifo_cdc.html) — sync FIFO flags, async FIFO Gray pointers, CDC headroom, and AXI-Stream async FIFO framing
+- [AXI DMA: Moving Data Without the CPU](https://sistenix.com/axi_dma.html) — S2MM/MM2S and CDMA architecture, 4KB boundary handling, partial strobes, circular mode, and throughput
+- [Writing a CSR Block Using AXI-Lite](https://sistenix.com/axi_csr.html) — self-clearing control bits, sticky status, and AXI-Lite software control patterns
+- [Building SystemVerilog AXI VIP for Fast Bring-Up](https://sistenix.com/axi_vip.html) — the task-based VIP style used for fast bring-up in this repo
+- [Checking AXI Protocol with SystemVerilog Assertions](https://sistenix.com/axi_sva.html) — the assertion layer used to check AXI, AXI-Lite, AXI-Stream, and 4KB burst rules
+- [Building a Verilator Testbench for AXI Designs](https://sistenix.com/verilator_tb.html) — how `sim_main.cpp`, `testbench.sv`, plusargs, and `--timing` fit together
+- [Reproducible RTL Simulation with Docker and GitHub Actions](https://sistenix.com/docker_ci.html) — containerized simulation, sweeps, and CI flow
+
 ---
 
 ## 📁 Repository Structure

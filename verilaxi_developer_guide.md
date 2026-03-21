@@ -141,6 +141,8 @@ verilaxi/
 
 **File:** `rtl/axi/snix_axi_dma.sv`
 
+**Background article:** [AXI DMA: Moving Data Without the CPU](https://sistenix.com/axi_dma.html)
+
 The integration wrapper that instantiates and wires together the CSR, S2MM engine, and MM2S engine.
 
 **Parameters**
@@ -231,6 +233,8 @@ Reads data from memory using AXI4-Full read channels (AR · R) and forwards it t
 
 **File:** `rtl/axil/snix_axi_dma_csr.sv`
 
+**Background article:** [Writing a CSR Block Using AXI-Lite](https://sistenix.com/axi_csr.html)
+
 An AXI-Lite slave register file that provides the software-visible control and status interface for the DMA.
 
 **Parameters**
@@ -254,6 +258,8 @@ An AXI-Lite slave register file that provides the software-visible control and s
 
 **File:** `rtl/axis/snix_axis_fifo.sv`
 
+**Background article:** [Synchronous and Asynchronous FIFOs](https://sistenix.com/fifo_cdc.html)
+
 An AXI4-Stream-compliant synchronous FIFO, used internally by both the S2MM and MM2S engines to decouple the stream and memory-bus datapaths.
 
 **Parameters**
@@ -271,6 +277,8 @@ An AXI4-Stream-compliant synchronous FIFO, used internally by both the S2MM and 
 ### 3.6 `snix_axis_afifo` — AXI-Stream Async FIFO
 
 **File:** `rtl/axis/snix_axis_afifo.sv`
+
+**Background article:** [Synchronous and Asynchronous FIFOs](https://sistenix.com/fifo_cdc.html)
 
 An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent source and sink clocks. Like `snix_axis_fifo`, it transports `tdata`, `tuser`, and `tlast`, but it uses `snix_async_fifo` internally and exposes separate `s_axis_clk` and `m_axis_clk` domains.
 
@@ -325,6 +333,8 @@ Reads a contiguous block from a source address and writes it to a destination ad
 ### 3.8 `snix_axi_cdma` — Top-Level Central DMA
 
 **File:** `rtl/axi/snix_axi_cdma.sv`
+
+**Background article:** [AXI DMA: Moving Data Without the CPU](https://sistenix.com/axi_dma.html)
 
 Integration wrapper that instantiates `snix_axi_cdma_csr` and `snix_axi_mm2mm`.
 
@@ -668,6 +678,8 @@ Sideband signals (`awlock`, `awcache`, `awprot`, `awqos`, `awuser`, and their AR
 
 ### 6.1 Package Overview
 
+**Background articles:** [Building SystemVerilog AXI VIP for Fast Bring-Up](https://sistenix.com/axi_vip.html), [Checking AXI Protocol with SystemVerilog Assertions](https://sistenix.com/axi_sva.html)
+
 All VIP classes are compiled into three SystemVerilog packages:
 
 | Package        | File                         | Contents                                        |
@@ -855,6 +867,8 @@ The `axil_lock` semaphore serialises AXI-Lite register accesses.
 ---
 
 ## 7. Simulation Guide
+
+**Background articles:** [Building a Verilator Testbench for AXI Designs](https://sistenix.com/verilator_tb.html), [Reproducible RTL Simulation with Docker and GitHub Actions](https://sistenix.com/docker_ci.html)
 
 ### 7.1 Prerequisites
 
@@ -1097,6 +1111,8 @@ Simulation logs are saved to `work/logs/` with the same parameter-aware naming s
 ---
 
 ### 7.5 SVA Protocol Checkers
+
+**Background article:** [Checking AXI Protocol with SystemVerilog Assertions](https://sistenix.com/axi_sva.html)
 
 Four Verilator-compatible checker modules live in `tb/assertions/`. Each is instantiated inside the relevant test module and receives the same interface signals as the DUT.
 
