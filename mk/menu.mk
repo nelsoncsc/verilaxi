@@ -14,6 +14,11 @@ menu:
 		echo "  7) axis_afifo (async FIFO CDC)"; \
 		echo "  8) dma"; \
 		echo "  9) cdma"; \
+		echo " 10) axis_upsizer (integer k:1, default IN=8 OUT=32)"; \
+		echo " 11) axis_downsizer (integer 1:k, default IN=32 OUT=8)"; \
+		echo " 12) axis_rr_converter (rational ratio, default IN=32 OUT=48)"; \
+		echo " 13) axis_rr_upsizer (rational up, default IN=16 OUT=24)"; \
+		echo " 14) axis_rr_downsizer (rational down, default IN=24 OUT=16)"; \
 		echo ""; \
 		echo "Commands:"; \
 		echo "  s) synth — synthesize a design with Yosys"; \
@@ -21,7 +26,7 @@ menu:
 		echo "  c) clean all"; \
 		echo "  q) quit"; \
 		echo ""; \
-		echo "Select a test [1-9], command, or q to quit:"; \
+		echo "Select a test [1-14], command, or q to quit:"; \
 		read -r choice; \
 		case "$$choice" in \
 			1) \
@@ -110,6 +115,51 @@ menu:
 				$(MAKE) clean run TESTNAME=cdma TESTTYPE=$$TESTTYPE READY_PROB=$$READY_PROB; \
 				code=$$?; \
 				if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		10) \
+			echo "You selected AXIS_UPSIZER test (integer k:1, IN=8 OUT=32)."; \
+			echo "SRC_BP (source backpressure) = whether the AXIS source can be stalled (0=no, 1=yes)"; \
+			echo "SINK_BP (sink backpressure)   = whether the AXIS sink can stall the DUT (0=no, 1=yes)"; \
+			read -p "Enter SRC_BP (0 or 1): " SRC_BP; \
+			read -p "Enter SINK_BP (0 or 1): " SINK_BP; \
+			$(MAKE) clean run TESTNAME=axis_upsizer SRC_BP=$$SRC_BP SINK_BP=$$SINK_BP; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		11) \
+			echo "You selected AXIS_DOWNSIZER test (integer 1:k, IN=32 OUT=8)."; \
+			echo "SRC_BP (source backpressure) = whether the AXIS source can be stalled (0=no, 1=yes)"; \
+			echo "SINK_BP (sink backpressure)   = whether the AXIS sink can stall the DUT (0=no, 1=yes)"; \
+			read -p "Enter SRC_BP (0 or 1): " SRC_BP; \
+			read -p "Enter SINK_BP (0 or 1): " SINK_BP; \
+			$(MAKE) clean run TESTNAME=axis_downsizer SRC_BP=$$SRC_BP SINK_BP=$$SINK_BP; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		12) \
+			echo "You selected AXIS_RR_CONVERTER test (rational ratio, IN=32 OUT=48)."; \
+			echo "SRC_BP (source backpressure) = whether the AXIS source can be stalled (0=no, 1=yes)"; \
+			echo "SINK_BP (sink backpressure)   = whether the AXIS sink can stall the DUT (0=no, 1=yes)"; \
+			read -p "Enter SRC_BP (0 or 1): " SRC_BP; \
+			read -p "Enter SINK_BP (0 or 1): " SINK_BP; \
+			$(MAKE) clean run TESTNAME=axis_rr_converter SRC_BP=$$SRC_BP SINK_BP=$$SINK_BP; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		13) \
+			echo "You selected AXIS_RR_UPSIZER test (rational up, IN=16 OUT=24)."; \
+			echo "SRC_BP (source backpressure) = whether the AXIS source can be stalled (0=no, 1=yes)"; \
+			echo "SINK_BP (sink backpressure)   = whether the AXIS sink can stall the DUT (0=no, 1=yes)"; \
+			read -p "Enter SRC_BP (0 or 1): " SRC_BP; \
+			read -p "Enter SINK_BP (0 or 1): " SINK_BP; \
+			$(MAKE) clean run TESTNAME=axis_rr_upsizer SRC_BP=$$SRC_BP SINK_BP=$$SINK_BP; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		14) \
+			echo "You selected AXIS_RR_DOWNSIZER test (rational down, IN=24 OUT=16)."; \
+			echo "SRC_BP (source backpressure) = whether the AXIS source can be stalled (0=no, 1=yes)"; \
+			echo "SINK_BP (sink backpressure)   = whether the AXIS sink can stall the DUT (0=no, 1=yes)"; \
+			read -p "Enter SRC_BP (0 or 1): " SRC_BP; \
+			read -p "Enter SINK_BP (0 or 1): " SINK_BP; \
+			$(MAKE) clean run TESTNAME=axis_rr_downsizer SRC_BP=$$SRC_BP SINK_BP=$$SINK_BP; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
 		s|S) \
 				echo "Select design to synthesize:"; \
 				echo "  1) axis_register"; \
@@ -121,8 +171,13 @@ menu:
 				echo "  7) axil_register"; \
 				echo "  8) dma"; \
 				echo "  9) cdma"; \
-				echo " 10) all"; \
-				read -p "Enter choice [1-10]: " schoice; \
+				echo " 10) axis_upsizer (integer k:1, IN=8 OUT=32)"; \
+				echo " 11) axis_downsizer (integer 1:k, IN=32 OUT=8)"; \
+				echo " 12) axis_rr_converter (rational ratio, IN=32 OUT=48)"; \
+				echo " 13) axis_rr_upsizer (rational up, IN=16 OUT=24)"; \
+				echo " 14) axis_rr_downsizer (rational down, IN=24 OUT=16)"; \
+				echo " 15) all"; \
+				read -p "Enter choice [1-15]: " schoice; \
 				echo "Synthesis target:"; \
 				echo "  g) generic  -- technology-independent (default)"; \
 				echo "  a) artix7   -- Xilinx 7-series (LUT6/FDRE/CARRY4 cells)"; \
@@ -132,16 +187,21 @@ menu:
 					*)           SYNTH_TARGET=generic ;; \
 				esac; \
 				case "$$schoice" in \
-					1) $(MAKE) synth SYNTH_NAME=axis_register  SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					2) $(MAKE) synth SYNTH_NAME=axis_arbiter   SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					3) $(MAKE) synth SYNTH_NAME=axis_fifo      SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					4) $(MAKE) synth SYNTH_NAME=axis_fifo_pkt  SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					5) $(MAKE) synth SYNTH_NAME=axis_afifo     SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					6) $(MAKE) synth SYNTH_NAME=axis_afifo_pkt SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					7) $(MAKE) synth SYNTH_NAME=axil_register  SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					8) $(MAKE) synth SYNTH_NAME=dma            SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					9) $(MAKE) synth SYNTH_NAME=cdma           SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					10) $(MAKE) synth-all                      SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					1)  $(MAKE) synth SYNTH_NAME=axis_register      SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					2)  $(MAKE) synth SYNTH_NAME=axis_arbiter       SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					3)  $(MAKE) synth SYNTH_NAME=axis_fifo          SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					4)  $(MAKE) synth SYNTH_NAME=axis_fifo_pkt      SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					5)  $(MAKE) synth SYNTH_NAME=axis_afifo         SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					6)  $(MAKE) synth SYNTH_NAME=axis_afifo_pkt     SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					7)  $(MAKE) synth SYNTH_NAME=axil_register      SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					8)  $(MAKE) synth SYNTH_NAME=dma                SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					9)  $(MAKE) synth SYNTH_NAME=cdma               SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					10) $(MAKE) synth SYNTH_NAME=axis_upsizer       SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					11) $(MAKE) synth SYNTH_NAME=axis_downsizer     SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					12) $(MAKE) synth SYNTH_NAME=axis_rr_converter  SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					13) $(MAKE) synth SYNTH_NAME=axis_rr_upsizer    SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					14) $(MAKE) synth SYNTH_NAME=axis_rr_downsizer  SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					15) $(MAKE) synth-all                           SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					*) echo "Invalid choice." ;; \
 				esac ;; \
 			h|H) $(MAKE) help ;; \

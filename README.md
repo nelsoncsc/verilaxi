@@ -10,6 +10,7 @@ It provides simple, task-based **AXI**, **AXI-Lite**, and **AXI-Stream** drivers
 
 - ✅ AXI4, AXI-Lite, and AXI-Stream support
 - ✅ AXI-Stream packet, beat, and weighted round-robin arbitration
+- ✅ AXI-Stream width converters — integer-ratio (k:1 up, 1:k down) and rational-ratio (e.g. 16↔24)
 - ✅ Synchronous and asynchronous AXI-Stream FIFOs
 - ✅ Verilator-first (tested with FST + Surfer)
 - ✅ No UVM, no factory, no phases
@@ -43,6 +44,8 @@ verilaxi/
 │   ├── axi/        snix_axi_dma, snix_axi_cdma, snix_axi_mm2mm, mm2s, s2mm
 │   ├── axil/       snix_axil_register, snix_axi_dma_csr, snix_axi_cdma_csr
 │   ├── axis/       snix_axis_arbiter, snix_axis_fifo, snix_axis_afifo, snix_axis_register
+│   │               snix_axis_upsizer, snix_axis_downsizer
+│   │               snix_axis_rr_converter, snix_axis_rr_upsizer, snix_axis_rr_downsizer
 │   └── common/     snix_sync_fifo, snix_async_fifo, snix_register_slice
 ├── tb/
 │   ├── classes/     axi_master, axi_slave, axil_master, axis_source, axis_sink …
@@ -108,7 +111,12 @@ make run TESTNAME=axis_arbiter   # AXI-Stream round-robin arbiter (packet mode)
 make run TESTNAME=axis_arbiter_beat      # AXI-Stream beat-mode arbiter
 make run TESTNAME=axis_arbiter_weighted  # AXI-Stream weighted packet arbiter
 make run TESTNAME=axis_fifo      # AXI-Stream FIFO
-make run TESTNAME=axis_afifo     # AXI-Stream async FIFO / CDC FIFO
+make run TESTNAME=axis_afifo         # AXI-Stream async FIFO / CDC FIFO
+make run TESTNAME=axis_upsizer       # AXI-Stream integer upsizer  (IN=8  → OUT=32)
+make run TESTNAME=axis_downsizer     # AXI-Stream integer downsizer (IN=32 → OUT=8)
+make run TESTNAME=axis_rr_converter  # AXI-Stream rational-ratio converter (IN=32 → OUT=48)
+make run TESTNAME=axis_rr_upsizer    # AXI-Stream rational-ratio upsizer   (IN=16 → OUT=24)
+make run TESTNAME=axis_rr_downsizer  # AXI-Stream rational-ratio downsizer  (IN=24 → OUT=16)
 ```
 ![Simulation Waveform](docs/axis_fifo.png)
 
@@ -146,11 +154,16 @@ make run TESTNAME=dma TESTTYPE=3 READY_PROB=80
 ### Synthesis
 
 ```bash
-make synth SYNTH_NAME=axis_arbiter   SYNTH_TARGET=generic
-make synth SYNTH_NAME=axis_fifo      SYNTH_TARGET=generic
-make synth SYNTH_NAME=axis_afifo     SYNTH_TARGET=artix7
-make synth SYNTH_NAME=dma            SYNTH_TARGET=artix7
-make synth SYNTH_NAME=cdma           SYNTH_TARGET=generic
+make synth SYNTH_NAME=axis_arbiter        SYNTH_TARGET=generic
+make synth SYNTH_NAME=axis_fifo           SYNTH_TARGET=generic
+make synth SYNTH_NAME=axis_afifo          SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_upsizer        SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_downsizer      SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_rr_converter   SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_rr_upsizer     SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_rr_downsizer   SYNTH_TARGET=artix7
+make synth SYNTH_NAME=dma                 SYNTH_TARGET=artix7
+make synth SYNTH_NAME=cdma                SYNTH_TARGET=generic
 ```
 
 Simulation logs and FST waveforms are written with parameter-aware filenames so sweep runs do not overwrite each other. For example, `make run TESTNAME=axis_afifo FRAME_FIFO=1 TESTTYPE=1 SRC_BP=1 SINK_BP=1` produces `work/logs/axis_afifo_ff1_tt1_src1_sink1.log` and `work/waves/axis_afifo_ff1_tt1_src1_sink1.fst`.
@@ -193,7 +206,7 @@ scripts/sweep.sh synth both
 scripts/sweep.sh all both
 ```
 
-The simulation sweep covers the AXIS register, arbiter, beat-mode arbiter, weighted arbiter, FIFO, and AFIFO matrices, `axil_register`, and DMA/CDMA runs with `READY_PROB=70`. The synthesis sweep covers all supported synth targets for `generic`, `artix7`, or both.
+The simulation sweep covers the AXIS register, arbiter (packet/beat/weighted), FIFO, AFIFO, upsizer, downsizer, rr_converter, rr_upsizer, rr_downsizer matrices, `axil_register`, and DMA/CDMA runs with `READY_PROB=70`. The synthesis sweep covers all supported designs for `generic`, `artix7`, or both.
 
 ## Acknowledgements
 

@@ -49,6 +49,37 @@ jobs:
       - name: axis_arbiter_weighted (full backpressure)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_arbiter_weighted SRC_BP=1 SINK_BP=1
 
+      # ── AXI-Stream width converters ──────────────────────────────────────
+      - name: axis_upsizer (no backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_upsizer SRC_BP=0 SINK_BP=0
+
+      - name: axis_upsizer (full backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_upsizer SRC_BP=1 SINK_BP=1
+
+      - name: axis_downsizer (no backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_downsizer SRC_BP=0 SINK_BP=0
+
+      - name: axis_downsizer (full backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_downsizer SRC_BP=1 SINK_BP=1
+
+      - name: axis_rr_converter (no backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_rr_converter SRC_BP=0 SINK_BP=0
+
+      - name: axis_rr_converter (full backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_rr_converter SRC_BP=1 SINK_BP=1
+
+      - name: axis_rr_upsizer (no backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_rr_upsizer SRC_BP=0 SINK_BP=0
+
+      - name: axis_rr_upsizer (full backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_rr_upsizer SRC_BP=1 SINK_BP=1
+
+      - name: axis_rr_downsizer (no backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_rr_downsizer SRC_BP=0 SINK_BP=0
+
+      - name: axis_rr_downsizer (full backpressure)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_rr_downsizer SRC_BP=1 SINK_BP=1
+
       # ── AXI-Stream FIFO ───────────────────────────────────────────────────
       - name: axis_fifo  (streaming, no backpressure)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_fifo FRAME_FIFO=0 SRC_BP=0 SINK_BP=0

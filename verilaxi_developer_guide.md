@@ -19,9 +19,14 @@
    - 3.5 [snix_axis_fifo — AXI-Stream FIFO](#35-snix_axis_fifo--axi-stream-fifo)
    - 3.6 [snix_axis_arbiter — AXI-Stream Arbiter](#36-snix_axis_arbiter--axi-stream-arbiter)
    - 3.7 [snix_axis_afifo — AXI-Stream Async FIFO](#37-snix_axis_afifo--axi-stream-async-fifo)
-   - 3.8 [snix_axi_mm2mm — Memory-to-Memory Engine](#38-snix_axi_mm2mm--memory-to-memory-engine)
-   - 3.9 [snix_axi_cdma — Top-Level Central DMA](#39-snix_axi_cdma--top-level-central-dma)
-   - 3.10 [snix_axi_cdma_csr — CDMA Control & Status Registers](#310-snix_axi_cdma_csr--cdma-control--status-registers)
+   - 3.8 [snix_axis_upsizer — Integer Width Upsizer](#38-snix_axis_upsizer--integer-width-upsizer)
+   - 3.9 [snix_axis_downsizer — Integer Width Downsizer](#39-snix_axis_downsizer--integer-width-downsizer)
+   - 3.10 [snix_axis_rr_converter — Rational-Ratio Width Converter](#310-snix_axis_rr_converter--rational-ratio-width-converter)
+   - 3.11 [snix_axis_rr_upsizer — Rational-Ratio Upsizer](#311-snix_axis_rr_upsizer--rational-ratio-upsizer)
+   - 3.12 [snix_axis_rr_downsizer — Rational-Ratio Downsizer](#312-snix_axis_rr_downsizer--rational-ratio-downsizer)
+   - 3.13 [snix_axi_mm2mm — Memory-to-Memory Engine](#313-snix_axi_mm2mm--memory-to-memory-engine)
+   - 3.14 [snix_axi_cdma — Top-Level Central DMA](#314-snix_axi_cdma--top-level-central-dma)
+   - 3.15 [snix_axi_cdma_csr — CDMA Control & Status Registers](#315-snix_axi_cdma_csr--cdma-control--status-registers)
 4. [CSR Register Maps](#4-csr-register-maps)
    - 4.1 [DMA Register Map (snix_axi_dma_csr)](#41-dma-register-map-snix_axi_dma_csr)
    - 4.2 [CDMA Register Map (snix_axi_cdma_csr)](#42-cdma-register-map-snix_axi_cdma_csr)
@@ -53,7 +58,12 @@
 
 ## 1. Project Overview
 
-**Verilaxi** is a synthesisable AXI DMA subsystem with a self-contained Verilator-based verification environment. It also includes reusable AXI-Stream infrastructure blocks such as `snix_axis_register`, `snix_axis_arbiter`, `snix_axis_fifo`, and `snix_axis_afifo` for stream pipelining, arbitration, buffering, and clock-domain crossing.
+**Verilaxi** is a synthesisable AXI DMA subsystem with a self-contained Verilator-based verification environment. It also includes reusable AXI-Stream infrastructure blocks for stream pipelining, arbitration, buffering, clock-domain crossing, and width conversion:
+
+- `snix_axis_register`, `snix_axis_fifo`, `snix_axis_afifo` — register slice, sync/async FIFO
+- `snix_axis_arbiter` — packet, beat, and weighted round-robin arbitration
+- `snix_axis_upsizer`, `snix_axis_downsizer` — integer-ratio width converters (k:1 and 1:k)
+- `snix_axis_rr_converter`, `snix_axis_rr_upsizer`, `snix_axis_rr_downsizer` — rational-ratio width converters (e.g. 16↔24, 32↔48)
 
 It contains two top-level DMA IP blocks:
 
@@ -96,10 +106,15 @@ verilaxi/
 │   │   ├── snix_axi_cdma_csr.sv  AXI-Lite register file (CDMA)
 │   │   └── snix_axil_register.sv
 │   ├── axis/
-│   │   ├── snix_axis_arbiter.sv AXI-Stream packet/beat/weighted arbiter
-│   │   ├── snix_axis_fifo.sv    AXI-Stream FIFO wrapper
-│   │   ├── snix_axis_afifo.sv   AXI-Stream async FIFO / CDC wrapper
-│   │   └── snix_axis_register.sv
+│   │   ├── snix_axis_arbiter.sv      AXI-Stream packet/beat/weighted arbiter
+│   │   ├── snix_axis_fifo.sv         AXI-Stream FIFO wrapper
+│   │   ├── snix_axis_afifo.sv        AXI-Stream async FIFO / CDC wrapper
+│   │   ├── snix_axis_register.sv
+│   │   ├── snix_axis_upsizer.sv      Integer width upsizer  (k:1, e.g. 8→32)
+│   │   ├── snix_axis_downsizer.sv    Integer width downsizer (1:k, e.g. 32→8)
+│   │   ├── snix_axis_rr_converter.sv Rational-ratio width converter (e.g. 32↔48)
+│   │   ├── snix_axis_rr_upsizer.sv   Rational-ratio upsizer wrapper (enforces OUT>IN)
+│   │   └── snix_axis_rr_downsizer.sv Rational-ratio downsizer wrapper (enforces IN>OUT)
 │   └── common/
 │       ├── snix_sync_fifo.sv    Synchronous FIFO primitive
 │       ├── snix_async_fifo.sv   Asynchronous FIFO primitive
@@ -126,6 +141,8 @@ verilaxi/
 │   │   ├── axi/              test_dma.sv (DMA integration), test_cdma.sv (CDMA integration)
 │   │   ├── axil/             test_axil_register.sv
 │   │   └── axis/             test_axis_fifo.sv, test_axis_afifo.sv, test_axis_register.sv
+│                         test_axis_upsizer.sv, test_axis_downsizer.sv
+│                         test_axis_rr_converter.sv, test_axis_rr_upsizer.sv, test_axis_rr_downsizer.sv
 │   └── top/
 │       └── testbench.sv      Top-level testbench (compile-time test select)
 ├── tb_cpp/
@@ -344,7 +361,163 @@ An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent s
 
 ---
 
-### 3.8 `snix_axi_mm2mm` — Memory-to-Memory Engine
+### 3.8 `snix_axis_upsizer` — Integer Width Upsizer
+
+**File:** `rtl/axis/snix_axis_upsizer.sv`
+
+Assembles `RATIO` consecutive narrow input beats into one wide output beat. The ratio must be an exact integer (`OUT_DATA_WIDTH` must be a multiple of `IN_DATA_WIDTH`).
+
+**Parameters**
+
+| Parameter       | Default | Description                                          |
+|-----------------|---------|------------------------------------------------------|
+| `IN_DATA_WIDTH` | 8       | Narrow-side width in bits (multiple of 8)            |
+| `OUT_DATA_WIDTH`| 32      | Wide-side width; must equal `N × IN_DATA_WIDTH`, N≥2 |
+
+**Key behaviours**
+
+- `RATIO = OUT_DATA_WIDTH / IN_DATA_WIDTH` is computed as a localparam.
+- A phase counter (`phase`) tracks how many narrow beats have been accepted.
+- Each accepted narrow beat is written into the `buf_data[phase]` and `buf_keep[phase]` arrays; a combinational assembly block (`always_comb`) builds the full wide word from the buffer plus the current input beat.
+- When `phase == RATIO − 1` (last slot) **or** `s_axis_tlast` fires, the assembled word is latched into an output holding register (`r_tdata`, `r_tkeep`, `r_tlast`, `r_tvalid`).
+- `s_axis_tready = !r_tvalid || m_axis_tready` — the upstream source can send a new beat in the same cycle that the downstream sink consumes the output register, giving one-cycle pipeline overlap.
+- TKEEP on the final output beat: all lanes from the last valid input phase are packed; trailing invalid lanes are zeroed.
+
+**FSM / flow summary**
+
+```
+FILL: accept narrow beats → buffer
+      when phase == RATIO-1 or TLAST: latch output register, phase reset
+OUTPUT: r_tvalid drives m_axis_tvalid
+        consumed when m_axis_tready && m_axis_tvalid
+```
+
+**Verification** — `test_axis_upsizer.sv` uses IN=8, OUT=32 (RATIO=4). Sends packets of 1, 2, 3, 4 beats; checks 8 output beats, 8 packets, and TKEEP values `0001 / 0011 / 0111 / 1111` (×2 with and without backpressure).
+
+---
+
+### 3.9 `snix_axis_downsizer` — Integer Width Downsizer
+
+**File:** `rtl/axis/snix_axis_downsizer.sv`
+
+Splits one wide input beat into `RATIO` consecutive narrow output beats. The ratio must be an exact integer (`IN_DATA_WIDTH` must be a multiple of `OUT_DATA_WIDTH`).
+
+**Parameters**
+
+| Parameter       | Default | Description                                              |
+|-----------------|---------|----------------------------------------------------------|
+| `IN_DATA_WIDTH` | 32      | Wide-side width in bits (multiple of 8)                  |
+| `OUT_DATA_WIDTH`| 8       | Narrow-side width; must divide `IN_DATA_WIDTH` exactly   |
+
+**Key behaviours**
+
+- `RATIO = IN_DATA_WIDTH / OUT_DATA_WIDTH` is computed as a localparam.
+- **IDLE/BURST FSM**: in IDLE the module accepts one wide beat (latches `latch_data`, `latch_keep`, `latch_last`) and transitions to BURST; in BURST it streams RATIO narrow beats combinationally from the latch, then returns to IDLE.
+- `s_axis_tready` is high only in IDLE; `m_axis_tvalid` is high only in BURST.
+- `last_phase` is computed during IDLE from the input TKEEP: the highest set byte-enable lane determines how many narrow beats are valid. TLAST is asserted when `phase == last_phase`.
+- Combinational output: `m_axis_tdata = latch_data[phase*OUT_DATA_WIDTH +: OUT_DATA_WIDTH]`.
+
+**Verification** — `test_axis_downsizer.sv` uses IN=32, OUT=8 (RATIO=4). Sends 1, 2, 3, 4-beat packets twice; checks 80 output beats and 8 packets with correct TKEEP on each TLAST beat.
+
+---
+
+### 3.10 `snix_axis_rr_converter` — Rational-Ratio Width Converter
+
+**File:** `rtl/axis/snix_axis_rr_converter.sv`
+
+Converts between any two byte-aligned widths whose ratio is not an integer. Uses the LCM-buffer approach: collect `IN_RATIO` input beats into a buffer of `LCM_W` bits, then drain `OUT_RATIO` output beats from it. Works in both directions (upsize and downsize) with the same RTL.
+
+**Parameters**
+
+| Parameter       | Default | Description                                        |
+|-----------------|---------|---------------------------------------------------|
+| `IN_DATA_WIDTH` | 32      | Input bus width in bits (multiple of 8)            |
+| `OUT_DATA_WIDTH`| 48      | Output bus width in bits (multiple of 8)           |
+
+**Derived localparams**
+
+| Localparam  | Formula                           | Example (32→48)  |
+|-------------|-----------------------------------|------------------|
+| `G`         | `GCD(IN_DATA_WIDTH, OUT_DATA_WIDTH)` | 16            |
+| `IN_RATIO`  | `OUT_DATA_WIDTH / G`              | 3                |
+| `OUT_RATIO` | `IN_DATA_WIDTH / G`               | 2                |
+| `LCM_W`     | `IN_DATA_WIDTH × IN_RATIO`        | 96               |
+
+GCD is computed at elaboration time by `gcd_fn`, a traditional Verilog-style function (no `return`, no `break`) that is compatible with both Verilator and Yosys.
+
+**FILL/DRAIN FSM**
+
+| State  | Behaviour                                                                           |
+|--------|--------------------------------------------------------------------------------------|
+| `FILL` | `s_axis_tready=1`. Accepts input beats into `lcm_buf`. Transitions to DRAIN when `in_phase == IN_RATIO−1` or `s_axis_tlast` fires. |
+| `DRAIN`| `m_axis_tvalid=1`. Streams output beats from `lcm_buf`. Returns to FILL when `out_phase == last_out_phase`. |
+
+**TLAST / TKEEP**
+
+When TLAST arrives at input beat P (0-based):
+- `total_bytes = (P+1) × IN_BYTES`
+- `last_out_phase = ⌈total_bytes / OUT_BYTES⌉ − 1`
+- `last_tkeep`: low `rem` bits set, where `rem = total_bytes mod OUT_BYTES`; if `rem == 0` all lanes are valid
+
+These are pre-computed at elaboration time using a `generate` loop indexed by the `IN_RATIO` possible values of `in_phase`, so the synthesised hardware is a small MUX — not a divider.
+
+**Synthesis note** — On Yosys 0.63, the `gcd_fn` function uses `gcd_fn = a` instead of `return a` and an `if (b != 0)` conditional body instead of `break`, for compatibility. The TLAST LUT uses a `generate for` loop with localparam arithmetic so all division/modulo is resolved at elaboration time (avoids the ~10 000-cell Artix-7 explosion that results from synthesising a 32-bit hardware divider).
+
+**Verification** — `test_axis_rr_converter.sv` uses IN=16, OUT=24. Exercises packets of 3, 1, 2, 6 input beats; checks 18 output beats, 8 packets, and TKEEP `111 / 011 / 001 / 111` per packet (×2 phases).
+
+---
+
+### 3.11 `snix_axis_rr_upsizer` — Rational-Ratio Upsizer
+
+**File:** `rtl/axis/snix_axis_rr_upsizer.sv`
+
+Thin wrapper around `snix_axis_rr_converter` that enforces `OUT_DATA_WIDTH > IN_DATA_WIDTH`. Use this module in preference to the bare converter when the upsize direction is part of your interface contract.
+
+**Parameters**
+
+| Parameter       | Default | Description                                          |
+|-----------------|---------|------------------------------------------------------|
+| `IN_DATA_WIDTH` | 16      | Narrow-side input width in bits                      |
+| `OUT_DATA_WIDTH`| 24      | Wide-side output width; must be > `IN_DATA_WIDTH`    |
+
+An elaboration-time `$fatal` fires if `OUT_DATA_WIDTH ≤ IN_DATA_WIDTH`. For integer ratios (where `OUT` is exactly divisible by `IN`) prefer `snix_axis_upsizer`, which can overlap input and output without stalling.
+
+**Verification** — `test_axis_rr_upsizer.sv`: IN=16, OUT=24 (G=8, IN_RATIO=3, OUT_RATIO=2, LCM=48). Same packet sequence as the rr_converter test; 18 output beats, 8 packets.
+
+---
+
+### 3.12 `snix_axis_rr_downsizer` — Rational-Ratio Downsizer
+
+**File:** `rtl/axis/snix_axis_rr_downsizer.sv`
+
+Thin wrapper around `snix_axis_rr_converter` that enforces `IN_DATA_WIDTH > OUT_DATA_WIDTH`. Use this when the downsize direction is part of your interface contract.
+
+**Parameters**
+
+| Parameter       | Default | Description                                          |
+|-----------------|---------|------------------------------------------------------|
+| `IN_DATA_WIDTH` | 24      | Wide-side input width in bits                        |
+| `OUT_DATA_WIDTH`| 16      | Narrow-side output width; must be < `IN_DATA_WIDTH`  |
+
+An elaboration-time `$fatal` fires if `IN_DATA_WIDTH ≤ OUT_DATA_WIDTH`. For integer ratios prefer `snix_axis_downsizer`.
+
+**Verification** — `test_axis_rr_downsizer.sv`: IN=24, OUT=16 (G=8, IN_RATIO=2, OUT_RATIO=3, LCM=48). Packets of 2, 1, 2, 4 input beats → 3, 2, 3, 6 output beats; 28 output beats, 8 packets, TKEEP `11 / 01 / 11 / 11` per packet (×2 phases).
+
+---
+
+**Width converter selection guide**
+
+| Condition | Module |
+|-----------|--------|
+| `OUT = N × IN` (integer upsize) | `snix_axis_upsizer` |
+| `IN = N × OUT` (integer downsize) | `snix_axis_downsizer` |
+| Non-integer ratio, OUT > IN | `snix_axis_rr_upsizer` |
+| Non-integer ratio, IN > OUT | `snix_axis_rr_downsizer` |
+| Either direction, ratio unknown | `snix_axis_rr_converter` |
+
+---
+
+### 3.13 `snix_axi_mm2mm` — Memory-to-Memory Engine
 
 **File:** `rtl/axi/snix_axi_mm2mm.sv`
 
@@ -373,7 +546,7 @@ Reads a contiguous block from a source address and writes it to a destination ad
 
 ---
 
-### 3.9 `snix_axi_cdma` — Top-Level Central DMA
+### 3.14 `snix_axi_cdma` — Top-Level Central DMA
 
 **File:** `rtl/axi/snix_axi_cdma.sv`
 
@@ -398,7 +571,7 @@ Integration wrapper that instantiates `snix_axi_cdma_csr` and `snix_axi_mm2mm`.
 
 ---
 
-### 3.10 `snix_axi_cdma_csr` — CDMA Control & Status Registers
+### 3.15 `snix_axi_cdma_csr` — CDMA Control & Status Registers
 
 **File:** `rtl/axil/snix_axi_cdma_csr.sv`
 
@@ -975,17 +1148,22 @@ When the repository is mounted from macOS or WSL2, use a Linux-specific `OBJ_DIR
 
 The build system is driven by `make`. The `TESTNAME` variable selects which test environment is compiled. An interactive menu is also available by running `make` with no arguments.
 
-| `TESTNAME`       | Menu | Test file                                 | DUT under test                 |
-|------------------|------|-------------------------------------------|--------------------------------|
-| `axis_register`  | 1    | `tb/tests/axis/test_axis_register.sv`     | `snix_axis_register`           |
-| `axis_arbiter`   | 2    | `tb/tests/axis/test_axis_arbiter.sv`      | `snix_axis_arbiter`            |
-| `axis_arbiter_beat` | 3 | `tb/tests/axis/test_axis_arbiter_beat.sv` | `snix_axis_arbiter`            |
-| `axis_arbiter_weighted` | 4 | `tb/tests/axis/test_axis_arbiter_weighted.sv` | `snix_axis_arbiter`      |
-| `axis_fifo`      | 5    | `tb/tests/axis/test_axis_fifo.sv`         | `snix_axis_fifo`               |
-| `axil_register`  | 6    | `tb/tests/axil/test_axil_register.sv`     | `snix_axil_register`           |
-| `axis_afifo`     | 7    | `tb/tests/axis/test_axis_afifo.sv`        | `snix_axis_afifo`              |
-| `dma`            | 8    | `tb/tests/axi/test_dma.sv`                | `snix_axi_dma` (full DMA)      |
-| `cdma`           | 9    | `tb/tests/axi/test_cdma.sv`               | `snix_axi_cdma` (Central DMA)  |
+| `TESTNAME`              | Menu | Test file                                        | DUT under test                   |
+|-------------------------|------|--------------------------------------------------|----------------------------------|
+| `axis_register`         | 1    | `tb/tests/axis/test_axis_register.sv`            | `snix_axis_register`             |
+| `axis_arbiter`          | 2    | `tb/tests/axis/test_axis_arbiter.sv`             | `snix_axis_arbiter`              |
+| `axis_arbiter_beat`     | 3    | `tb/tests/axis/test_axis_arbiter_beat.sv`        | `snix_axis_arbiter`              |
+| `axis_arbiter_weighted` | 4    | `tb/tests/axis/test_axis_arbiter_weighted.sv`    | `snix_axis_arbiter`              |
+| `axis_fifo`             | 5    | `tb/tests/axis/test_axis_fifo.sv`                | `snix_axis_fifo`                 |
+| `axil_register`         | 6    | `tb/tests/axil/test_axil_register.sv`            | `snix_axil_register`             |
+| `axis_afifo`            | 7    | `tb/tests/axis/test_axis_afifo.sv`               | `snix_axis_afifo`                |
+| `dma`                   | 8    | `tb/tests/axi/test_dma.sv`                       | `snix_axi_dma` (full DMA)        |
+| `cdma`                  | 9    | `tb/tests/axi/test_cdma.sv`                      | `snix_axi_cdma` (Central DMA)    |
+| `axis_upsizer`          | 10   | `tb/tests/axis/test_axis_upsizer.sv`             | `snix_axis_upsizer`              |
+| `axis_downsizer`        | 11   | `tb/tests/axis/test_axis_downsizer.sv`           | `snix_axis_downsizer`            |
+| `axis_rr_converter`     | 12   | `tb/tests/axis/test_axis_rr_converter.sv`        | `snix_axis_rr_converter`         |
+| `axis_rr_upsizer`       | 13   | `tb/tests/axis/test_axis_rr_upsizer.sv`          | `snix_axis_rr_upsizer`           |
+| `axis_rr_downsizer`     | 14   | `tb/tests/axis/test_axis_rr_downsizer.sv`        | `snix_axis_rr_downsizer`         |
 
 **Compile and run a test**
 
@@ -1013,6 +1191,15 @@ make run TESTNAME=axis_afifo
 
 # AXI-Lite register test
 make run TESTNAME=axil_register
+
+# Width converters — integer ratio
+make run TESTNAME=axis_upsizer    SRC_BP=1 SINK_BP=1
+make run TESTNAME=axis_downsizer  SRC_BP=1 SINK_BP=1
+
+# Width converters — rational ratio
+make run TESTNAME=axis_rr_converter  SRC_BP=1 SINK_BP=1
+make run TESTNAME=axis_rr_upsizer    SRC_BP=1 SINK_BP=1
+make run TESTNAME=axis_rr_downsizer  SRC_BP=1 SINK_BP=1
 
 # Interactive menu
 make
@@ -1053,6 +1240,26 @@ For synthesis, `axis_afifo` is also available through the Makefile flow:
 make synth SYNTH_NAME=axis_afifo     SYNTH_TARGET=generic
 make synth SYNTH_NAME=axis_afifo_pkt SYNTH_TARGET=artix7
 ```
+
+**Width converter synthesis** — all five width converter designs are in `VALID_SYNTHS`:
+
+```bash
+make synth SYNTH_NAME=axis_upsizer       SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_downsizer     SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_rr_converter  SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_rr_upsizer    SYNTH_TARGET=artix7
+make synth SYNTH_NAME=axis_rr_downsizer  SYNTH_TARGET=artix7
+```
+
+Artix-7 cell counts at default parameters (generic target in parentheses):
+
+| Design | Parameters | Total (artix7) | FFs | LUTs | Notes |
+|--------|------------|----------------|-----|------|-------|
+| `axis_upsizer`      | IN=8,  OUT=32       | 464  | 67  | 247 | includes MUXF7/8 for wide MUX |
+| `axis_downsizer`    | IN=32, OUT=8        | 105  | 43  | 18  | IDLE/BURST FSM; very compact |
+| `axis_rr_converter` | IN=32, OUT=48       | 1084 | 106 | 686 | 96-bit LCM buffer |
+| `axis_rr_upsizer`   | IN=16, OUT=24       | 448  | 58  | 298 | 48-bit LCM buffer |
+| `axis_rr_downsizer` | IN=24, OUT=16       | 561  | 56  | 393 | 48-bit LCM buffer |
 
 **AXI slave backpressure (`READY_PROB`)**
 

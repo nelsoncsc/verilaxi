@@ -14,7 +14,7 @@ WAVE_DIR   := $(WORK_DIR)/waves
 FILELIST_COMMON := filelists/common.f
 FILELIST_TB     := filelists/tb_top.f
 
-VALID_TESTS := axis_register axis_fifo axis_afifo axis_arbiter axis_arbiter_beat axis_arbiter_weighted dma axil_register cdma
+VALID_TESTS := axis_register axis_fifo axis_afifo axis_arbiter axis_arbiter_beat axis_arbiter_weighted axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer dma axil_register cdma
 TESTNAME    ?= axis_register
 
 SRC_BP      ?=
@@ -38,6 +38,16 @@ else ifeq ($(TESTNAME),axis_arbiter)
 else ifeq ($(TESTNAME),axis_arbiter_beat)
   RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
 else ifeq ($(TESTNAME),axis_arbiter_weighted)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_upsizer)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_downsizer)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_rr_converter)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_rr_upsizer)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_rr_downsizer)
   RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
 else ifeq ($(TESTNAME),axis_fifo)
   RUN_TAG := $(TESTNAME)_ff$(AXIS_FRAME_VAL)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
@@ -69,6 +79,16 @@ else ifeq ($(TESTNAME),axis_arbiter_beat)
     ENV_FILE := $(TB_DIR)/tests/axis/test_axis_arbiter_beat.sv
 else ifeq ($(TESTNAME),axis_arbiter_weighted)
     ENV_FILE := $(TB_DIR)/tests/axis/test_axis_arbiter_weighted.sv
+else ifeq ($(TESTNAME),axis_upsizer)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_upsizer.sv
+else ifeq ($(TESTNAME),axis_downsizer)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_downsizer.sv
+else ifeq ($(TESTNAME),axis_rr_converter)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_rr_converter.sv
+else ifeq ($(TESTNAME),axis_rr_upsizer)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_rr_upsizer.sv
+else ifeq ($(TESTNAME),axis_rr_downsizer)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_rr_downsizer.sv
 else ifeq ($(TESTNAME),dma)
     ENV_FILE := $(TB_DIR)/tests/axi/test_dma.sv
 else ifeq ($(TESTNAME),axil_register)
@@ -105,6 +125,16 @@ else ifeq ($(TESTNAME),axis_arbiter_beat)
   VERILATOR_DEFS := +define+USE_AXIS_ARBITER_BEAT
 else ifeq ($(TESTNAME),axis_arbiter_weighted)
   VERILATOR_DEFS := +define+USE_AXIS_ARBITER_WEIGHTED
+else ifeq ($(TESTNAME),axis_upsizer)
+  VERILATOR_DEFS := +define+USE_AXIS_UPSIZER
+else ifeq ($(TESTNAME),axis_downsizer)
+  VERILATOR_DEFS := +define+USE_AXIS_DOWNSIZER
+else ifeq ($(TESTNAME),axis_rr_converter)
+  VERILATOR_DEFS := +define+USE_AXIS_RR_CONVERTER
+else ifeq ($(TESTNAME),axis_rr_upsizer)
+  VERILATOR_DEFS := +define+USE_AXIS_RR_UPSIZER
+else ifeq ($(TESTNAME),axis_rr_downsizer)
+  VERILATOR_DEFS := +define+USE_AXIS_RR_DOWNSIZER
 else ifeq ($(TESTNAME),dma)
   VERILATOR_DEFS := +define+USE_DMA_TEST
 else ifeq ($(TESTNAME),axil_register)

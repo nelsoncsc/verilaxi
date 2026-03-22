@@ -2,7 +2,7 @@
 # Synthesis (Yosys)
 # ==================================================
 SYNTH_DIR     := $(WORK_DIR)/synth
-VALID_SYNTHS  := axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axil_register dma cdma
+VALID_SYNTHS  := axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register dma cdma
 VALID_TARGETS := generic artix7
 SYNTH_NAME    ?= axis_fifo
 SYNTH_TARGET  ?= generic
@@ -37,6 +37,21 @@ else ifeq ($(SYNTH_NAME),dma)
   SYNTH_PARAM :=
 else ifeq ($(SYNTH_NAME),cdma)
   SYNTH_TOP   := snix_axi_cdma
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),axis_upsizer)
+  SYNTH_TOP   := snix_axis_upsizer
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),axis_downsizer)
+  SYNTH_TOP   := snix_axis_downsizer
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),axis_rr_converter)
+  SYNTH_TOP   := snix_axis_rr_converter
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),axis_rr_upsizer)
+  SYNTH_TOP   := snix_axis_rr_upsizer
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),axis_rr_downsizer)
+  SYNTH_TOP   := snix_axis_rr_downsizer
   SYNTH_PARAM :=
 endif
 

@@ -49,6 +49,26 @@ module testbench;
         test_axis_arbiter_weighted test_axis_arbiter_weighted_u0 (.clk   (clk),
                                                                   .rst_n (rst_n)
                                                                  );
+    `elsif USE_AXIS_UPSIZER
+        test_axis_upsizer test_axis_upsizer_u0 (.clk   (clk),
+                                                .rst_n (rst_n)
+                                               );
+    `elsif USE_AXIS_DOWNSIZER
+        test_axis_downsizer test_axis_downsizer_u0 (.clk   (clk),
+                                                    .rst_n (rst_n)
+                                                   );
+    `elsif USE_AXIS_RR_CONVERTER
+        test_axis_rr_converter test_axis_rr_converter_u0 (.clk   (clk),
+                                                          .rst_n (rst_n)
+                                                         );
+    `elsif USE_AXIS_RR_UPSIZER
+        test_axis_rr_upsizer test_axis_rr_upsizer_u0 (.clk   (clk),
+                                                       .rst_n (rst_n)
+                                                      );
+    `elsif USE_AXIS_RR_DOWNSIZER
+        test_axis_rr_downsizer test_axis_rr_downsizer_u0 (.clk   (clk),
+                                                           .rst_n (rst_n)
+                                                          );
     `else
         initial begin
             $fatal(1, "No test environment selected. Define USE_AXIS_ENV or USE_AXI_ENV.");

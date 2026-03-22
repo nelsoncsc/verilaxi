@@ -97,6 +97,46 @@ run_sim_sweep() {
         done
     done
 
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_upsizer src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_upsizer SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_downsizer src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_downsizer SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_rr_converter src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_rr_converter SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_rr_upsizer src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_rr_upsizer SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_rr_downsizer src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_rr_downsizer SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
     run_sim_case "axil_register" TESTNAME=axil_register
 
     for testtype in 0 1 2 3 4; do
@@ -137,7 +177,7 @@ run_synth_sweep() {
     esac
 
     for target in "${targets[@]}"; do
-        for synth_name in axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axil_register dma cdma; do
+        for synth_name in axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register dma cdma; do
             run_synth_case \
                 "${synth_name} target=${target}" \
                 SYNTH_NAME="${synth_name}" SYNTH_TARGET="${target}"
