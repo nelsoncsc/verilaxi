@@ -14,7 +14,7 @@ WAVE_DIR   := $(WORK_DIR)/waves
 FILELIST_COMMON := filelists/common.f
 FILELIST_TB     := filelists/tb_top.f
 
-VALID_TESTS := axis_register axis_fifo axis_afifo dma axil_register cdma
+VALID_TESTS := axis_register axis_fifo axis_afifo axis_arbiter axis_arbiter_beat axis_arbiter_weighted dma axil_register cdma
 TESTNAME    ?= axis_register
 
 SRC_BP      ?=
@@ -32,6 +32,12 @@ CDMA_TESTTYPE_VAL := $(if $(TESTTYPE),$(TESTTYPE),1)
 READY_PROB_VAL    := $(if $(READY_PROB),$(READY_PROB),100)
 
 ifeq ($(TESTNAME),axis_register)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_arbiter)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_arbiter_beat)
+  RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
+else ifeq ($(TESTNAME),axis_arbiter_weighted)
   RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
 else ifeq ($(TESTNAME),axis_fifo)
   RUN_TAG := $(TESTNAME)_ff$(AXIS_FRAME_VAL)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
@@ -57,6 +63,12 @@ else ifeq ($(TESTNAME),axis_fifo)
     ENV_FILE := $(TB_DIR)/tests/axis/test_axis_fifo.sv
 else ifeq ($(TESTNAME),axis_afifo)
     ENV_FILE := $(TB_DIR)/tests/axis/test_axis_afifo.sv
+else ifeq ($(TESTNAME),axis_arbiter)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_arbiter.sv
+else ifeq ($(TESTNAME),axis_arbiter_beat)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_arbiter_beat.sv
+else ifeq ($(TESTNAME),axis_arbiter_weighted)
+    ENV_FILE := $(TB_DIR)/tests/axis/test_axis_arbiter_weighted.sv
 else ifeq ($(TESTNAME),dma)
     ENV_FILE := $(TB_DIR)/tests/axi/test_dma.sv
 else ifeq ($(TESTNAME),axil_register)
@@ -87,6 +99,12 @@ else ifeq ($(TESTNAME),axis_afifo)
   ifeq ($(FRAME_FIFO),1)
     VERILATOR_DEFS += +define+FRAME_FIFO
   endif
+else ifeq ($(TESTNAME),axis_arbiter)
+  VERILATOR_DEFS := +define+USE_AXIS_ARBITER
+else ifeq ($(TESTNAME),axis_arbiter_beat)
+  VERILATOR_DEFS := +define+USE_AXIS_ARBITER_BEAT
+else ifeq ($(TESTNAME),axis_arbiter_weighted)
+  VERILATOR_DEFS := +define+USE_AXIS_ARBITER_WEIGHTED
 else ifeq ($(TESTNAME),dma)
   VERILATOR_DEFS := +define+USE_DMA_TEST
 else ifeq ($(TESTNAME),axil_register)

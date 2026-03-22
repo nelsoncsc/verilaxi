@@ -52,7 +52,7 @@
 
 ## 1. Project Overview
 
-**Verilaxi** is a synthesisable AXI DMA subsystem with a self-contained Verilator-based verification environment. It also includes reusable AXI-Stream infrastructure blocks such as `snix_axis_register`, `snix_axis_fifo`, and `snix_axis_afifo` for stream pipelining, buffering, and clock-domain crossing.
+**Verilaxi** is a synthesisable AXI DMA subsystem with a self-contained Verilator-based verification environment. It also includes reusable AXI-Stream infrastructure blocks such as `snix_axis_register`, `snix_axis_arbiter`, `snix_axis_fifo`, and `snix_axis_afifo` for stream pipelining, arbitration, buffering, and clock-domain crossing.
 
 It contains two top-level DMA IP blocks:
 
@@ -95,6 +95,7 @@ verilaxi/
 │   │   ├── snix_axi_cdma_csr.sv  AXI-Lite register file (CDMA)
 │   │   └── snix_axil_register.sv
 │   ├── axis/
+│   │   ├── snix_axis_arbiter.sv AXI-Stream packet/beat/weighted arbiter
 │   │   ├── snix_axis_fifo.sv    AXI-Stream FIFO wrapper
 │   │   ├── snix_axis_afifo.sv   AXI-Stream async FIFO / CDC wrapper
 │   │   └── snix_axis_register.sv
@@ -271,6 +272,43 @@ An AXI4-Stream-compliant synchronous FIFO, used internally by both the S2MM and 
 | `FIFO_DEPTH`| 16      | Number of entries (must be power of 2) |
 
 **Behaviour** — `s_axis_tready` is de-asserted whenever the internal `snix_sync_fifo` is full; `m_axis_tvalid` is asserted whenever data is available. The module packs `{tdata, tuser, tlast}` into a single wide word for the underlying FIFO primitive.
+
+---
+
+### 3.5a `snix_axis_arbiter` — AXI-Stream Arbiter
+
+**File:** `rtl/axis/snix_axis_arbiter.sv`
+
+An AXI4-Stream arbiter that supports three closely related policies in the same RTL:
+
+- **packet round-robin** — hold the current grant until `TLAST`
+- **beat round-robin** — rotate after every accepted beat
+- **weighted packet round-robin** — round-robin order constrained by per-source credits
+
+**Parameters**
+
+| Parameter    | Default | Description                                                    |
+|--------------|---------|----------------------------------------------------------------|
+| `NUM_SRCS`   | 4       | Number of AXI-Stream sources                                   |
+| `DATA_WIDTH` | 8       | Bit width of `tdata`                                           |
+| `USER_WIDTH` | 1       | Bit width of `tuser`                                           |
+| `HOLD_PACKET`| 1       | `1` = packet mode, `0` = beat mode                             |
+| `WEIGHT_W`   | 4       | Bit width of each packed weight field                          |
+| `WEIGHTS`    | `'0`    | Packed `{W[N-1], ..., W1, W0}` service weights                 |
+
+**Key behaviours**
+
+- The combinational scan starts at `rr_ptr` and wraps around with modular arithmetic, so the previous winner is not immediately reconsidered first.
+- `locked` has a dual role: it holds a selected source stable while a beat is stalled, and in packet mode it extends that hold across all beats of a multi-beat packet.
+- `HOLD_PACKET=1'b1` keeps the grant until `TVALID && TREADY && TLAST`; `HOLD_PACKET=1'b0` makes the same state machine rotate on every accepted beat.
+- `WEIGHTS` are packed with source 0 in the least-significant slice. A configured weight of zero is treated as one by the `cfg_weight()` helper, so the default `'0` naturally becomes equal round-robin.
+- Only the effective selected source sees `s_axis_tready=1`; all others are backpressured.
+
+**Verification hooks**
+
+- `test_axis_arbiter.sv` checks packet-mode arbitration in both sequential and concurrent traffic phases and closes with `72` beats and `16` packets.
+- `test_axis_arbiter_beat.sv` checks strict `0,1,2,3,...` accepted-beat rotation when backpressure is disabled.
+- `test_axis_arbiter_weighted.sv` checks exact grant ratios for a packed weight configuration such as `{W3, W2, W1, W0} = {1,1,2,4}`.
 
 ---
 
@@ -935,17 +973,29 @@ The build system is driven by `make`. The `TESTNAME` variable selects which test
 | `TESTNAME`       | Menu | Test file                                 | DUT under test                 |
 |------------------|------|-------------------------------------------|--------------------------------|
 | `axis_register`  | 1    | `tb/tests/axis/test_axis_register.sv`     | `snix_axis_register`           |
-| `axis_fifo`      | 2    | `tb/tests/axis/test_axis_fifo.sv`         | `snix_axis_fifo`               |
-| `axil_register`  | 3    | `tb/tests/axil/test_axil_register.sv`     | `snix_axil_register`           |
-| `dma`            | 4    | `tb/tests/axi/test_dma.sv`                | `snix_axi_dma` (full DMA)      |
-| `cdma`           | 5    | `tb/tests/axi/test_cdma.sv`               | `snix_axi_cdma` (Central DMA)  |
-| `axis_afifo`     | 6    | `tb/tests/axis/test_axis_afifo.sv`        | `snix_axis_afifo`              |
+| `axis_arbiter`   | 2    | `tb/tests/axis/test_axis_arbiter.sv`      | `snix_axis_arbiter`            |
+| `axis_arbiter_beat` | 3 | `tb/tests/axis/test_axis_arbiter_beat.sv` | `snix_axis_arbiter`            |
+| `axis_arbiter_weighted` | 4 | `tb/tests/axis/test_axis_arbiter_weighted.sv` | `snix_axis_arbiter`      |
+| `axis_fifo`      | 5    | `tb/tests/axis/test_axis_fifo.sv`         | `snix_axis_fifo`               |
+| `axil_register`  | 6    | `tb/tests/axil/test_axil_register.sv`     | `snix_axil_register`           |
+| `axis_afifo`     | 7    | `tb/tests/axis/test_axis_afifo.sv`        | `snix_axis_afifo`              |
+| `dma`            | 8    | `tb/tests/axi/test_dma.sv`                | `snix_axi_dma` (full DMA)      |
+| `cdma`           | 9    | `tb/tests/axi/test_cdma.sv`               | `snix_axi_cdma` (Central DMA)  |
 
 **Compile and run a test**
 
 ```bash
 # Full DMA integration test
 make run TESTNAME=dma
+
+# Packet-mode AXI-Stream arbiter
+make run TESTNAME=axis_arbiter SRC_BP=1 SINK_BP=1
+
+# Beat-mode AXI-Stream arbiter
+make run TESTNAME=axis_arbiter_beat SRC_BP=1 SINK_BP=1
+
+# Weighted AXI-Stream arbiter
+make run TESTNAME=axis_arbiter_weighted SRC_BP=1 SINK_BP=1
 
 # Central DMA test (4KB boundary + partial last beat + abort)
 make run TESTNAME=cdma

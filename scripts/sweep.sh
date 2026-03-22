@@ -51,6 +51,30 @@ run_sim_sweep() {
         done
     done
 
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_arbiter src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_arbiter SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_arbiter_beat src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_arbiter_beat SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
+    for src_bp in 0 1; do
+        for sink_bp in 0 1; do
+            run_sim_case \
+                "axis_arbiter_weighted src=${src_bp} sink=${sink_bp}" \
+                TESTNAME=axis_arbiter_weighted SRC_BP="${src_bp}" SINK_BP="${sink_bp}"
+        done
+    done
+
     for frame_fifo in 0 1; do
         for src_bp in 0 1; do
             for sink_bp in 0 1; do
@@ -113,7 +137,7 @@ run_synth_sweep() {
     esac
 
     for target in "${targets[@]}"; do
-        for synth_name in axis_register axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axil_register dma cdma; do
+        for synth_name in axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axil_register dma cdma; do
             run_synth_case \
                 "${synth_name} target=${target}" \
                 SYNTH_NAME="${synth_name}" SYNTH_TARGET="${target}"

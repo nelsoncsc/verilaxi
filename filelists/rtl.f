@@ -5,6 +5,7 @@ rtl/common/snix_async_fifo.sv
 rtl/axis/snix_axis_register.sv
 rtl/axis/snix_axis_fifo.sv
 rtl/axis/snix_axis_afifo.sv
+rtl/axis/snix_axis_arbiter.sv
 
 rtl/axil/snix_axil_register.sv
 rtl/axil/snix_axi_dma_csr.sv

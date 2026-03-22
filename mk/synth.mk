@@ -2,7 +2,7 @@
 # Synthesis (Yosys)
 # ==================================================
 SYNTH_DIR     := $(WORK_DIR)/synth
-VALID_SYNTHS  := axis_register axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axil_register dma cdma
+VALID_SYNTHS  := axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axil_register dma cdma
 VALID_TARGETS := generic artix7
 SYNTH_NAME    ?= axis_fifo
 SYNTH_TARGET  ?= generic
@@ -13,6 +13,9 @@ RTL_FILES := $(shell grep '^rtl/' filelists/rtl.f)
 # Per-design top module and optional chparam
 ifeq ($(SYNTH_NAME),axis_register)
   SYNTH_TOP   := snix_axis_register
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),axis_arbiter)
+  SYNTH_TOP   := snix_axis_arbiter
   SYNTH_PARAM :=
 else ifeq ($(SYNTH_NAME),axis_fifo)
   SYNTH_TOP   := snix_axis_fifo

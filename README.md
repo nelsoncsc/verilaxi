@@ -9,6 +9,7 @@ It provides simple, task-based **AXI**, **AXI-Lite**, and **AXI-Stream** drivers
 ## ✨ Features
 
 - ✅ AXI4, AXI-Lite, and AXI-Stream support
+- ✅ AXI-Stream packet, beat, and weighted round-robin arbitration
 - ✅ Synchronous and asynchronous AXI-Stream FIFOs
 - ✅ Verilator-first (tested with FST + Surfer)
 - ✅ No UVM, no factory, no phases
@@ -40,7 +41,7 @@ verilaxi/
 ├── rtl/
 │   ├── axi/        snix_axi_dma, snix_axi_cdma, snix_axi_mm2mm, mm2s, s2mm
 │   ├── axil/       snix_axil_register, snix_axi_dma_csr, snix_axi_cdma_csr
-│   ├── axis/       snix_axis_fifo, snix_axis_afifo, snix_axis_register
+│   ├── axis/       snix_axis_arbiter, snix_axis_fifo, snix_axis_afifo, snix_axis_register
 │   └── common/     snix_sync_fifo, snix_async_fifo, snix_register_slice
 ├── tb/
 │   ├── classes/     axi_master, axi_slave, axil_master, axis_source, axis_sink …
@@ -102,12 +103,24 @@ make run TESTNAME=dma            # AXI4 DMA (stream → memory, memory → strea
 make run TESTNAME=cdma           # AXI4 CDMA (memory-to-memory copy)
 make run TESTNAME=axil_register  # AXI-Lite register
 make run TESTNAME=axis_register  # AXI-Stream register slice
+make run TESTNAME=axis_arbiter   # AXI-Stream round-robin arbiter (packet mode)
+make run TESTNAME=axis_arbiter_beat      # AXI-Stream beat-mode arbiter
+make run TESTNAME=axis_arbiter_weighted  # AXI-Stream weighted packet arbiter
 make run TESTNAME=axis_fifo      # AXI-Stream FIFO
 make run TESTNAME=axis_afifo     # AXI-Stream async FIFO / CDC FIFO
 ```
 ![Simulation Waveform](docs/axis_fifo.png)
 
 ```bash
+# AXI-Stream arbiter with sink and source backpressure
+make run TESTNAME=axis_arbiter SRC_BP=1 SINK_BP=1
+
+# Beat-mode arbiter
+make run TESTNAME=axis_arbiter_beat SRC_BP=1 SINK_BP=1
+
+# Weighted packet arbiter
+make run TESTNAME=axis_arbiter_weighted SRC_BP=1 SINK_BP=1
+
 # AXI-Stream async FIFO in streaming mode
 make run TESTNAME=axis_afifo FRAME_FIFO=0 TESTTYPE=1 SRC_BP=1 SINK_BP=1
 
@@ -132,6 +145,7 @@ make run TESTNAME=dma TESTTYPE=3 READY_PROB=80
 ### Synthesis
 
 ```bash
+make synth SYNTH_NAME=axis_arbiter   SYNTH_TARGET=generic
 make synth SYNTH_NAME=axis_fifo      SYNTH_TARGET=generic
 make synth SYNTH_NAME=axis_afifo     SYNTH_TARGET=artix7
 make synth SYNTH_NAME=dma            SYNTH_TARGET=artix7
@@ -178,7 +192,7 @@ scripts/sweep.sh synth both
 scripts/sweep.sh all both
 ```
 
-The simulation sweep covers the AXIS register/FIFO/AFIFO matrices, `axil_register`, and DMA/CDMA runs with `READY_PROB=70`. The synthesis sweep covers all supported synth targets for `generic`, `artix7`, or both.
+The simulation sweep covers the AXIS register, arbiter, beat-mode arbiter, weighted arbiter, FIFO, and AFIFO matrices, `axil_register`, and DMA/CDMA runs with `READY_PROB=70`. The synthesis sweep covers all supported synth targets for `generic`, `artix7`, or both.
 
 ## Acknowledgements
 

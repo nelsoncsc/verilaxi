@@ -13,10 +13,13 @@ class axis_sink;
     task recv_packet();
         int count = 0;
         while(1) begin
-            if(backpressure)
-                vif.tready = ($urandom_range(0,99) < p_ready);
-            else
-                vif.tready = 1'b1;
+            bit ready_now;
+
+            ready_now = !backpressure ? 1'b1
+                                      : ($urandom_range(0,99) < p_ready);
+
+            @(negedge vif.ACLK);
+            vif.tready = ready_now;
 
             @(posedge vif.ACLK);
 
@@ -28,6 +31,7 @@ class axis_sink;
             end
         end
         // Deassert tready after packet done
+        @(negedge vif.ACLK);
         vif.tready = 0;
     endtask: recv_packet
 

@@ -37,6 +37,18 @@ module testbench;
         test_axis_afifo test_axis_afifo_u0 (.clk   (clk),
                                             .rst_n (rst_n)
                                            );
+    `elsif USE_AXIS_ARBITER
+        test_axis_arbiter test_axis_arbiter_u0 (.clk   (clk),
+                                               .rst_n (rst_n)
+                                              );
+    `elsif USE_AXIS_ARBITER_BEAT
+        test_axis_arbiter_beat test_axis_arbiter_beat_u0 (.clk   (clk),
+                                                           .rst_n (rst_n)
+                                                          );
+    `elsif USE_AXIS_ARBITER_WEIGHTED
+        test_axis_arbiter_weighted test_axis_arbiter_weighted_u0 (.clk   (clk),
+                                                                  .rst_n (rst_n)
+                                                                 );
     `else
         initial begin
             $fatal(1, "No test environment selected. Define USE_AXIS_ENV or USE_AXI_ENV.");
