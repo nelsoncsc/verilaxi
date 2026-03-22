@@ -280,6 +280,8 @@ An AXI4-Stream-compliant synchronous FIFO, used internally by both the S2MM and 
 
 **File:** `rtl/axis/snix_axis_arbiter.sv`
 
+**Background article:** [AXI-Stream Arbitration in SystemVerilog](https://sistenix.com/axi_arbiter.html)
+
 ![AXI-Stream Arbiter](docs/axis_arbiter.svg)
 
 An AXI4-Stream arbiter that supports three closely related policies in the same RTL:
