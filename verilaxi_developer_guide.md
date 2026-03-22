@@ -17,10 +17,11 @@
    - 3.3 [snix_axi_mm2s — Memory-to-Stream Engine](#33-snix_axi_mm2s--memory-to-stream-engine)
    - 3.4 [snix_axi_dma_csr — DMA Control & Status Registers](#34-snix_axi_dma_csr--dma-control--status-registers)
    - 3.5 [snix_axis_fifo — AXI-Stream FIFO](#35-snix_axis_fifo--axi-stream-fifo)
-   - 3.6 [snix_axis_afifo — AXI-Stream Async FIFO](#36-snix_axis_afifo--axi-stream-async-fifo)
-   - 3.7 [snix_axi_mm2mm — Memory-to-Memory Engine](#37-snix_axi_mm2mm--memory-to-memory-engine)
-   - 3.8 [snix_axi_cdma — Top-Level Central DMA](#38-snix_axi_cdma--top-level-central-dma)
-   - 3.9 [snix_axi_cdma_csr — CDMA Control & Status Registers](#39-snix_axi_cdma_csr--cdma-control--status-registers)
+   - 3.6 [snix_axis_arbiter — AXI-Stream Arbiter](#36-snix_axis_arbiter--axi-stream-arbiter)
+   - 3.7 [snix_axis_afifo — AXI-Stream Async FIFO](#37-snix_axis_afifo--axi-stream-async-fifo)
+   - 3.8 [snix_axi_mm2mm — Memory-to-Memory Engine](#38-snix_axi_mm2mm--memory-to-memory-engine)
+   - 3.9 [snix_axi_cdma — Top-Level Central DMA](#39-snix_axi_cdma--top-level-central-dma)
+   - 3.10 [snix_axi_cdma_csr — CDMA Control & Status Registers](#310-snix_axi_cdma_csr--cdma-control--status-registers)
 4. [CSR Register Maps](#4-csr-register-maps)
    - 4.1 [DMA Register Map (snix_axi_dma_csr)](#41-dma-register-map-snix_axi_dma_csr)
    - 4.2 [CDMA Register Map (snix_axi_cdma_csr)](#42-cdma-register-map-snix_axi_cdma_csr)
@@ -275,9 +276,11 @@ An AXI4-Stream-compliant synchronous FIFO, used internally by both the S2MM and 
 
 ---
 
-### 3.5a `snix_axis_arbiter` — AXI-Stream Arbiter
+### 3.6 `snix_axis_arbiter` — AXI-Stream Arbiter
 
 **File:** `rtl/axis/snix_axis_arbiter.sv`
+
+![AXI-Stream Arbiter](docs/axis_arbiter.svg)
 
 An AXI4-Stream arbiter that supports three closely related policies in the same RTL:
 
@@ -312,7 +315,7 @@ An AXI4-Stream arbiter that supports three closely related policies in the same 
 
 ---
 
-### 3.6 `snix_axis_afifo` — AXI-Stream Async FIFO
+### 3.7 `snix_axis_afifo` — AXI-Stream Async FIFO
 
 **File:** `rtl/axis/snix_axis_afifo.sv`
 
@@ -339,7 +342,7 @@ An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent s
 
 ---
 
-### 3.7 `snix_axi_mm2mm` — Memory-to-Memory Engine
+### 3.8 `snix_axi_mm2mm` — Memory-to-Memory Engine
 
 **File:** `rtl/axi/snix_axi_mm2mm.sv`
 
@@ -368,7 +371,7 @@ Reads a contiguous block from a source address and writes it to a destination ad
 
 ---
 
-### 3.8 `snix_axi_cdma` — Top-Level Central DMA
+### 3.9 `snix_axi_cdma` — Top-Level Central DMA
 
 **File:** `rtl/axi/snix_axi_cdma.sv`
 
@@ -393,7 +396,7 @@ Integration wrapper that instantiates `snix_axi_cdma_csr` and `snix_axi_mm2mm`.
 
 ---
 
-### 3.9 `snix_axi_cdma_csr` — CDMA Control & Status Registers
+### 3.10 `snix_axi_cdma_csr` — CDMA Control & Status Registers
 
 **File:** `rtl/axil/snix_axi_cdma_csr.sv`
 
