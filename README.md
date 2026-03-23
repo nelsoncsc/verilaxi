@@ -27,6 +27,7 @@ These **sistenix** posts are the narrative layer for the repository. The intent 
 
 - [Synchronous and Asynchronous FIFOs](https://sistenix.com/fifo_cdc.html) — sync FIFO flags, async FIFO Gray pointers, CDC headroom, and AXI-Stream async FIFO framing
 - [AXI-Stream Arbitration in SystemVerilog](https://sistenix.com/axi_arbiter.html) — packet, beat, and weighted round-robin AXI-Stream arbitration, with RTL and testbench examples
+- [Building AXI-Stream Width Converters](https://sistenix.com/axis_width_converter.html) — integer up/down sizing, rational byte repacking, TKEEP handling, and byte-accurate verification
 - [AXI DMA: Moving Data Without the CPU](https://sistenix.com/axi_dma.html) — S2MM/MM2S and CDMA architecture, 4KB boundary handling, partial strobes, circular mode, and throughput
 - [Writing a CSR Block Using AXI-Lite](https://sistenix.com/axi_csr.html) — self-clearing control bits, sticky status, and AXI-Lite software control patterns
 - [Building SystemVerilog AXI VIP for Fast Bring-Up](https://sistenix.com/axi_vip.html) — the task-based VIP style used for fast bring-up in this repo
