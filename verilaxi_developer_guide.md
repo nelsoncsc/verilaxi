@@ -361,6 +361,10 @@ An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent s
 
 ---
 
+![AXI-Stream Width Converters](docs/axi_rr_up_down_sizer.svg)
+
+*Figure: Rational-ratio AXI-Stream width-converter wrappers in verilaxi. The top path is snix_axis_rr_upsizer (narrow to wide) and the bottom path is snix_axis_rr_downsizer (wide to narrow).*
+
 ### 3.8 `snix_axis_upsizer` — Integer Width Upsizer
 
 **File:** `rtl/axis/snix_axis_upsizer.sv`
