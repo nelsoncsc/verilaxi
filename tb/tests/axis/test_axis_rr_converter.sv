@@ -143,7 +143,7 @@ module test_axis_rr_converter #(
                 int valid_bytes;
                 logic [OUT_BYTES-1:0] exp_keep;
                 logic exp_last;
-                $display("[RRC] beat %0d tdata=0x%h tkeep=%03b tlast=%0b",
+                $display("[RRC][OUT] beat %0d tdata=0x%h tkeep=%03b tlast=%0b",
                          beats_recv, m_tdata_w, m_tkeep_w, m_tlast_w);
 
                 pkt_end        = exp_pkt_end_bytes[exp_pkt_idx];
@@ -240,8 +240,8 @@ module test_axis_rr_converter #(
             end
             @(posedge clk);
             if (s_tvalid_w && s_tready_w) begin
-                $display("[SRC] beat %0d/%0d tdata=0x%h tlast=%0b",
-                         beat, num_beats - 1, s_tdata_w, s_tlast_w);
+                $display("[RRC][IN ] beat %0d/%0d tdata=0x%h tkeep=%b tlast=%0b",
+                         beat, num_beats - 1, s_tdata_w, s_tkeep_w, s_tlast_w);
                 beat++;
                 @(negedge clk);
                 s_tvalid_w = 1'b0;

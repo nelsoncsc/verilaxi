@@ -184,6 +184,8 @@ module test_axis_upsizer #(
             end
             @(posedge clk);
             if (s_t.tvalid && s_t.tready) begin
+                $display("[UPS][IN ] beat %0d/%0d tdata=0x%h tkeep=%01b tlast=%0b",
+                         beat, num_beats - 1, s_t.tdata, 1'b1, s_t.tlast);
                 beat++;
                 @(negedge clk);
                 s_t.tvalid = 1'b0;
@@ -214,7 +216,7 @@ module test_axis_upsizer #(
                 logic [OUT_KEEP_W-1:0] exp_keep;
                 logic exp_last;
 
-                $display("[UPS] beat %0d tdata=0x%h tkeep=%04b tlast=%0b",
+                $display("[UPS][OUT] beat %0d tdata=0x%h tkeep=%04b tlast=%0b",
                          beats_recv, m_tdata_w, m_tkeep_w, m_tlast_w);
 
                 if (exp_pkt_idx >= exp_pkt_end_bytes.size()) begin
