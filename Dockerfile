@@ -38,7 +38,7 @@ RUN git clone --depth 1 --branch v5.046 https://github.com/verilator/verilator.g
  && cd /tmp \
  && rm -rf verilator
 
-RUN git clone --recursive --depth 1 --branch yosys-0.63 https://github.com/YosysHQ/yosys.git \
+RUN git clone --recursive --depth 1 --branch v0.63 https://github.com/YosysHQ/yosys.git \
  && cd yosys \
  && make config-gcc \
  && make -j"$(nproc)" \
