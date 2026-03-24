@@ -71,10 +71,11 @@ cd verilaxi
 ### Requirements
 
 - Verilator 5.046
+- Yosys 0.63
 - SystemVerilog support enabled
 - Surfer (recommended) or GTKWave for FST viewing
 
-This repository is validated against `Verilator 5.046`. Older packaged `5.x` releases may fail to parse or build parts of the testbench and should not be assumed to work.
+This repository is validated against `Verilator 5.046` and `Yosys 0.63`. Older packaged `5.x` Verilator releases may fail to parse or build parts of the testbench and should not be assumed to work. Older Yosys releases such as `0.33` may also fail on some of the newer SystemVerilog syntax used by modules like `snix_axis_arbiter`.
 
 ---
 ### 🧪 Example: AXI Write / Read
@@ -171,7 +172,7 @@ Simulation logs and FST waveforms are written with parameter-aware filenames so 
 
 ## Docker
 
-A minimal Docker environment is included for reproducible Linux runs with `Verilator 5.046`, `Yosys`, and `make`.
+A minimal Docker environment is included for reproducible Linux runs with `Verilator 5.046`, `Yosys 0.63`, and `make`.
 
 ```bash
 docker build -t verilaxi .

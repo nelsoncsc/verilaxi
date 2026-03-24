@@ -1113,11 +1113,11 @@ Verify your Verilator version:
 verilator --version
 ```
 
-This repository is validated against `Verilator 5.046`. Older packaged `5.x` releases may fail to parse or build parts of the testbench and should not be assumed to work.
+This repository is validated against `Verilator 5.046` and `Yosys 0.63`. Older packaged `5.x` Verilator releases may fail to parse or build parts of the testbench and should not be assumed to work. Older Yosys releases such as `0.33` may also fail on newer SystemVerilog syntax used by blocks like `snix_axis_arbiter`.
 
 ### Docker Workflow
 
-A `Dockerfile` is included for a reproducible Ubuntu-based environment with `Verilator 5.046`, `Yosys`, and the build dependencies needed by this repo.
+A `Dockerfile` is included for a reproducible Ubuntu-based environment with `Verilator 5.046`, `Yosys 0.63`, and the build dependencies needed by this repo.
 
 Build the image:
 
