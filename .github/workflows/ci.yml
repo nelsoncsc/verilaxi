@@ -30,6 +30,16 @@ jobs:
       - name: axis_register  (full backpressure)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_register SRC_BP=1 SINK_BP=1
 
+      # ── UART / AXI-Lite control plane ────────────────────────────────────
+      - name: uart_lite
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=uart_lite
+
+      - name: uart_axil_slave
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=uart_axil_slave
+
+      - name: uart_axil_master
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=uart_axil_master
+
       # ── AXI-Stream arbiter ────────────────────────────────────────────────
       - name: axis_arbiter  (no backpressure)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axis_arbiter SRC_BP=0 SINK_BP=0
@@ -109,6 +119,9 @@ jobs:
       # ── AXI-Lite register ─────────────────────────────────────────────────
       - name: axil_register
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axil_register
+
+      - name: axil_gpio
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=axil_gpio
 
       # ── AXI DMA ───────────────────────────────────────────────────────────
       - name: dma  (TESTTYPE=0 write abort)

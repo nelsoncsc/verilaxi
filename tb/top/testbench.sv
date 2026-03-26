@@ -17,6 +17,10 @@ module testbench;
         test_axis_register test_axis_reg_u0(.clk  (clk),
                                             .rst_n (rst_n)
                                            );
+    `elsif USE_UART_LITE
+        test_uart_lite test_uart_lite_u0 (.clk   (clk),
+                                          .rst_n (rst_n)
+                                         );
     `elsif USE_AXIS_FIFO
         test_axis_fifo test_axis_fifo_u0 (.clk  (clk),
                                           .rst_n (rst_n)
@@ -25,6 +29,18 @@ module testbench;
         test_axil_register test_axil_register_u0 (.clk   (clk),
                                                   .rst_n (rst_n)
                                                  );
+    `elsif USE_AXIL_GPIO
+        test_axil_gpio test_axil_gpio_u0 (.clk   (clk),
+                                          .rst_n (rst_n)
+                                         );
+    `elsif USE_UART_AXIL_SLAVE
+        test_uart_axil_slave test_uart_axil_slave_u0 (.clk   (clk),
+                                                      .rst_n (rst_n)
+                                                     );
+    `elsif USE_UART_AXIL_MASTER
+        test_uart_axil_master test_uart_axil_master_u0 (.clk   (clk),
+                                                        .rst_n (rst_n)
+                                                       );
     `elsif USE_DMA_TEST
        test_dma test_dma_u0 (.clk   (clk),
                              .rst_n (rst_n)

@@ -11,26 +11,14 @@
 
 1. [Project Overview](#1-project-overview)
 2. [Repository Structure](#2-repository-structure)
-3. [Module Descriptions](#3-module-descriptions)
-   - 3.1 [snix_axi_dma — Top-Level DMA](#31-snix_axi_dma--top-level-dma)
-   - 3.2 [snix_axi_s2mm — Stream-to-Memory Engine](#32-snix_axi_s2mm--stream-to-memory-engine)
-   - 3.3 [snix_axi_mm2s — Memory-to-Stream Engine](#33-snix_axi_mm2s--memory-to-stream-engine)
-   - 3.4 [snix_axi_dma_csr — DMA Control & Status Registers](#34-snix_axi_dma_csr--dma-control--status-registers)
-   - 3.5 [snix_axis_fifo — AXI-Stream FIFO](#35-snix_axis_fifo--axi-stream-fifo)
-   - 3.6 [snix_axis_arbiter — AXI-Stream Arbiter](#36-snix_axis_arbiter--axi-stream-arbiter)
-   - 3.7 [snix_axis_afifo — AXI-Stream Async FIFO](#37-snix_axis_afifo--axi-stream-async-fifo)
-   - 3.8 [snix_axis_upsizer — Integer Width Upsizer](#38-snix_axis_upsizer--integer-width-upsizer)
-   - 3.9 [snix_axis_downsizer — Integer Width Downsizer](#39-snix_axis_downsizer--integer-width-downsizer)
-   - 3.10 [snix_axis_rr_converter — Rational-Ratio Width Converter](#310-snix_axis_rr_converter--rational-ratio-width-converter)
-   - 3.11 [snix_axis_rr_upsizer — Rational-Ratio Upsizer](#311-snix_axis_rr_upsizer--rational-ratio-upsizer)
-   - 3.12 [snix_axis_rr_downsizer — Rational-Ratio Downsizer](#312-snix_axis_rr_downsizer--rational-ratio-downsizer)
-   - 3.13 [snix_axi_mm2mm — Memory-to-Memory Engine](#313-snix_axi_mm2mm--memory-to-memory-engine)
-   - 3.14 [snix_axi_cdma — Top-Level Central DMA](#314-snix_axi_cdma--top-level-central-dma)
-   - 3.15 [snix_axi_cdma_csr — CDMA Control & Status Registers](#315-snix_axi_cdma_csr--cdma-control--status-registers)
-4. [CSR Register Maps](#4-csr-register-maps)
+3. [Module Reference](#3-module-reference)
+   - 3.1 [DMA and CDMA Datapaths](#31-dma-and-cdma-datapaths)
+   - 3.2 [UART and AXI-Lite Control Plane](#32-uart-and-axi-lite-control-plane)
+   - 3.3 [AXI-Stream Infrastructure](#33-axi-stream-infrastructure)
+4. [DMA and CDMA CSR Register Maps](#4-dma-and-cdma-csr-register-maps)
    - 4.1 [DMA Register Map (snix_axi_dma_csr)](#41-dma-register-map-snix_axi_dma_csr)
    - 4.2 [CDMA Register Map (snix_axi_cdma_csr)](#42-cdma-register-map-snix_axi_cdma_csr)
-5. [AXI Interface Signals](#5-axi-interface-signals)
+5. [DMA and CDMA External Interfaces](#5-dma-and-cdma-external-interfaces)
    - 5.1 [AXI-Lite Slave (Control)](#51-axi-lite-slave-control)
    - 5.2 [AXI4-Full Master — S2MM Write Channels](#52-axi4-full-master--s2mm-write-channels)
    - 5.3 [AXI4-Full Master — MM2S Read Channels](#53-axi4-full-master--mm2s-read-channels)
@@ -104,7 +92,10 @@ verilaxi/
 │   ├── axil/
 │   │   ├── snix_axi_dma_csr.sv   AXI-Lite register file (DMA)
 │   │   ├── snix_axi_cdma_csr.sv  AXI-Lite register file (CDMA)
-│   │   └── snix_axil_register.sv
+│   │   ├── snix_axil_register.sv
+│   │   ├── snix_axil_gpio.sv      AXI-Lite GPIO with LEDs, RGB LEDs, and debounced buttons
+│   │   ├── snix_uart_axil_slave.sv   AXI-Lite UART peripheral
+│   │   └── snix_uart_axil_master.sv  UART-to-AXI-Lite bridge
 │   ├── axis/
 │   │   ├── snix_axis_arbiter.sv      AXI-Stream packet/beat/weighted arbiter
 │   │   ├── snix_axis_fifo.sv         AXI-Stream FIFO wrapper
@@ -115,6 +106,8 @@ verilaxi/
 │   │   ├── snix_axis_rr_converter.sv Rational-ratio width converter (e.g. 32↔48)
 │   │   ├── snix_axis_rr_upsizer.sv   Rational-ratio upsizer wrapper (enforces OUT>IN)
 │   │   └── snix_axis_rr_downsizer.sv Rational-ratio downsizer wrapper (enforces IN>OUT)
+│   ├── uart/
+│   │   └── snix_uart_lite.sv         8N1 UART core with byte FIFOs
 │   └── common/
 │       ├── snix_sync_fifo.sv    Synchronous FIFO primitive
 │       ├── snix_async_fifo.sv   Asynchronous FIFO primitive
@@ -139,10 +132,11 @@ verilaxi/
 │   │   └── axi_4k_checker.sv AXI4 4KB burst-boundary checker
 │   ├── tests/
 │   │   ├── axi/              test_dma.sv (DMA integration), test_cdma.sv (CDMA integration)
-│   │   ├── axil/             test_axil_register.sv
-│   │   └── axis/             test_axis_fifo.sv, test_axis_afifo.sv, test_axis_register.sv
+│   │   ├── axil/             test_axil_register.sv, test_axil_gpio.sv, test_uart_axil_slave.sv, test_uart_axil_master.sv
+│   │   ├── axis/             test_axis_fifo.sv, test_axis_afifo.sv, test_axis_register.sv
 │                         test_axis_upsizer.sv, test_axis_downsizer.sv
 │                         test_axis_rr_converter.sv, test_axis_rr_upsizer.sv, test_axis_rr_downsizer.sv
+│   │   └── uart/             test_uart_lite.sv
 │   └── top/
 │       └── testbench.sv      Top-level testbench (compile-time test select)
 ├── tb_cpp/
@@ -154,9 +148,13 @@ verilaxi/
 
 ---
 
-## 3. Module Descriptions
+## 3. Module Reference
 
-### 3.1 `snix_axi_dma` — Top-Level DMA
+This section is organised by functional family so the DMA datapaths, their CSRs, and the surrounding control-plane blocks stay close together.
+
+### 3.1 DMA and CDMA Datapaths
+
+#### `snix_axi_dma` — Top-Level DMA
 
 **File:** `rtl/axi/snix_axi_dma.sv`
 
@@ -188,7 +186,7 @@ The top level decodes the CSR output bus (`config_status_reg`) to individual con
 
 ---
 
-### 3.2 `snix_axi_s2mm` — Stream-to-Memory Engine
+#### `snix_axi_s2mm` — Stream-to-Memory Engine
 
 **File:** `rtl/axi/snix_axi_s2mm.sv`
 
@@ -218,7 +216,7 @@ Receives data from an AXI4-Stream slave port and writes it to memory using AXI4-
 
 ---
 
-### 3.3 `snix_axi_mm2s` — Memory-to-Stream Engine
+#### `snix_axi_mm2s` — Memory-to-Stream Engine
 
 **File:** `rtl/axi/snix_axi_mm2s.sv`
 
@@ -248,7 +246,7 @@ Reads data from memory using AXI4-Full read channels (AR · R) and forwards it t
 
 ---
 
-### 3.4 `snix_axi_dma_csr` — DMA Control & Status Registers
+#### `snix_axi_dma_csr` — DMA Control & Status Registers
 
 **File:** `rtl/axil/snix_axi_dma_csr.sv`
 
@@ -273,7 +271,125 @@ An AXI-Lite slave register file that provides the software-visible control and s
 
 ---
 
-### 3.5 `snix_axis_fifo` — AXI-Stream FIFO
+### 3.2 UART and AXI-Lite Control Plane
+
+#### `snix_uart_lite` — Byte-Oriented UART Core
+
+**File:** `rtl/uart/snix_uart_lite.sv`
+
+An 8N1 UART core intended as the reusable serial building block for both standalone board bring-up and the AXI-Lite control-plane wrappers in this repository.
+
+**Parameters**
+
+| Parameter     | Default     | Description                               |
+|---------------|-------------|-------------------------------------------|
+| `CLK_FREQ_HZ` | 100_000_000 | Input clock frequency in hertz            |
+| `BAUD_RATE`   | 115200      | UART baud rate                            |
+| `FIFO_DEPTH`  | 8           | Number of byte entries in TX and RX FIFOs |
+
+**Key behaviours**
+
+- Implements standard 8N1 framing with one start bit, eight data bits, and one stop bit.
+- RX and TX each use a small internal byte FIFO so the surrounding logic is decoupled from the serial bit timing.
+- The external interface is byte-oriented: `tx_data/tx_valid/tx_ready` for transmit and `rx_data/rx_valid/rx_ready` for receive.
+- `tx_busy` and `rx_busy` expose the in-flight serializer and sampler activity, which is useful for debug and simple status reporting.
+
+**Verification hooks**
+
+- `test_uart_lite.sv` loops the UART output back into the receiver and checks byte-accurate round-trip transfer for representative values such as `0x55`, `0xA3`, `0x00`, and `0xFF`.
+
+---
+
+#### `snix_axil_gpio` — AXI-Lite GPIO Peripheral
+
+**File:** `rtl/axil/snix_axil_gpio.sv`
+
+A lightweight GPIO peripheral for board bring-up, intended to sit behind either a CPU or the UART-to-AXI-Lite bridge. It exposes user LED outputs, two RGB LED outputs, synchronized switch inputs, debounced button inputs, and sticky button edge capture.
+
+![snix_axil_gpio](docs/snix_axil_gpio.svg)
+
+**Register map**
+
+| Offset | Name       | Access | Description |
+|--------|------------|--------|-------------|
+| `0x00` | `GPIO_OUT` | `RW`   | Low bits drive the LED outputs |
+| `0x04` | `GPIO_IN`  | `RO`   | Low bits return synchronized switches, next bits return debounced buttons |
+| `0x08` | `BTN_EDGE` | `RW1C` | Sticky button rising-edge bits; write `1` to clear |
+| `0x0C` | `RGB0_CTRL`| `RW`   | Low three bits drive the three on/off channels of RGB LED 0 |
+| `0x10` | `RGB1_CTRL`| `RW`   | Low three bits drive the three on/off channels of RGB LED 1 |
+
+**Key behaviours**
+
+- Switches and buttons are first synchronized into the local clock domain before any control logic sees them.
+- Buttons are debounced with a per-button counter, so short bounce bursts do not create false transitions.
+- `BTN_EDGE` latches debounced rising edges and holds them until software clears the corresponding bit.
+- The block is intentionally simple enough for direct use on boards such as the Arty S7-50, where user LEDs, RGB LEDs, switches, and buttons are often the first peripherals brought up.
+- RGB outputs are plain on/off control bits, not PWM brightness channels, so the peripheral stays small and easy to verify.
+
+**Verification hooks**
+
+- `test_axil_gpio.sv` writes user LED and RGB LED outputs, reads synchronized switches, drives a bouncing button waveform, checks the debounced button state in `GPIO_IN`, and verifies sticky-edge capture plus write-one-to-clear behavior in `BTN_EDGE`.
+
+---
+
+#### `snix_uart_axil_slave` — AXI-Lite UART Peripheral
+
+**File:** `rtl/axil/snix_uart_axil_slave.sv`
+
+An AXI-Lite slave wrapper around `snix_uart_lite`, intended for CPU-controlled systems or for exposing a simple memory-mapped UART in larger AXI-Lite fabrics.
+
+**Register map**
+
+| Offset | Name     | Access | Description |
+|--------|----------|--------|-------------|
+| `0x00` | `DATA`   | `RW`   | Write low byte to TX FIFO; read low byte from RX FIFO |
+| `0x04` | `STATUS` | `RO`   | Bit `[0]` `tx_ready`, bit `[1]` `rx_valid`, bit `[2]` `tx_busy`, bit `[3]` `rx_busy` |
+
+**Key behaviours**
+
+- AXI-Lite address and data channels are timing-isolated with `snix_register_slice`.
+- Writes to `DATA` wait until the UART can accept a byte, so software sees a normal AXI-Lite backpressure event instead of silently dropping transmit data.
+- Reads from `DATA` pop one received byte when `rx_valid` is asserted.
+- `STATUS` is live state, not a sticky interrupt register; software can poll it for simple bring-up flows.
+
+**Verification hooks**
+
+- `test_uart_axil_slave.sv` writes bytes through AXI-Lite, loops `uart_tx` back to `uart_rx`, polls the `STATUS` register, and checks that the same bytes are returned through `DATA`.
+
+---
+
+#### `snix_uart_axil_master` — UART-to-AXI-Lite Bridge
+
+**File:** `rtl/axil/snix_uart_axil_master.sv`
+
+A synthesizable UART command bridge that turns a serial byte stream into AXI-Lite master transactions. This is the key no-CPU control-plane block for board bring-up on platforms such as the Arty S7-50.
+
+**Command format**
+
+- Write: `W <addr32hex> <data32hex>\n`
+- Read: `R <addr32hex>\n`
+
+**Responses**
+
+- Successful write: `OK\n`
+- Successful read: `D <addr32hex> <data32hex>\n`
+- Parse or transaction error: `ERR\n`
+
+**Key behaviours**
+
+- Uses `snix_uart_lite` internally and parses ASCII hex commands with a small FSM.
+- Issues one AXI-Lite transaction at a time and waits for the full `B` or `R` response before emitting the UART reply.
+- Keeps the command format intentionally human-readable so a terminal emulator or a tiny host Python script can drive AXI-Lite peripherals without any embedded CPU.
+
+**Verification hooks**
+
+- `test_uart_axil_master.sv` connects a second UART instance as the host, sends read and write commands, and checks both the AXI-Lite side effects and the returned ASCII responses.
+
+---
+
+### 3.3 AXI-Stream Infrastructure
+
+#### `snix_axis_fifo` — AXI-Stream FIFO
 
 **File:** `rtl/axis/snix_axis_fifo.sv`
 
@@ -293,7 +409,7 @@ An AXI4-Stream-compliant synchronous FIFO, used internally by both the S2MM and 
 
 ---
 
-### 3.6 `snix_axis_arbiter` — AXI-Stream Arbiter
+#### `snix_axis_arbiter` — AXI-Stream Arbiter
 
 **File:** `rtl/axis/snix_axis_arbiter.sv`
 
@@ -334,7 +450,7 @@ An AXI4-Stream arbiter that supports three closely related policies in the same 
 
 ---
 
-### 3.7 `snix_axis_afifo` — AXI-Stream Async FIFO
+#### `snix_axis_afifo` — AXI-Stream Async FIFO
 
 **File:** `rtl/axis/snix_axis_afifo.sv`
 
@@ -367,7 +483,7 @@ An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent s
 
 **Background article:** [Building AXI-Stream Width Converters](https://sistenix.com/axis_width_converter.html)
 
-### 3.8 `snix_axis_upsizer` — Integer Width Upsizer
+#### `snix_axis_upsizer` — Integer Width Upsizer
 
 **File:** `rtl/axis/snix_axis_upsizer.sv`
 
@@ -402,7 +518,7 @@ OUTPUT: r_tvalid drives m_axis_tvalid
 
 ---
 
-### 3.9 `snix_axis_downsizer` — Integer Width Downsizer
+#### `snix_axis_downsizer` — Integer Width Downsizer
 
 **File:** `rtl/axis/snix_axis_downsizer.sv`
 
@@ -427,7 +543,7 @@ Splits one wide input beat into `RATIO` consecutive narrow output beats. The rat
 
 ---
 
-### 3.10 `snix_axis_rr_converter` — Rational-Ratio Width Converter
+#### `snix_axis_rr_converter` — Rational-Ratio Width Converter
 
 **File:** `rtl/axis/snix_axis_rr_converter.sv`
 
@@ -473,7 +589,7 @@ These are pre-computed at elaboration time using a `generate` loop indexed by th
 
 ---
 
-### 3.11 `snix_axis_rr_upsizer` — Rational-Ratio Upsizer
+#### `snix_axis_rr_upsizer` — Rational-Ratio Upsizer
 
 **File:** `rtl/axis/snix_axis_rr_upsizer.sv`
 
@@ -492,7 +608,7 @@ An elaboration-time `$fatal` fires if `OUT_DATA_WIDTH ≤ IN_DATA_WIDTH`. For in
 
 ---
 
-### 3.12 `snix_axis_rr_downsizer` — Rational-Ratio Downsizer
+#### `snix_axis_rr_downsizer` — Rational-Ratio Downsizer
 
 **File:** `rtl/axis/snix_axis_rr_downsizer.sv`
 
@@ -523,7 +639,7 @@ An elaboration-time `$fatal` fires if `IN_DATA_WIDTH ≤ OUT_DATA_WIDTH`. For in
 
 ---
 
-### 3.13 `snix_axi_mm2mm` — Memory-to-Memory Engine
+#### `snix_axi_mm2mm` — Memory-to-Memory Engine
 
 **File:** `rtl/axi/snix_axi_mm2mm.sv`
 
@@ -552,7 +668,7 @@ Reads a contiguous block from a source address and writes it to a destination ad
 
 ---
 
-### 3.14 `snix_axi_cdma` — Top-Level Central DMA
+#### `snix_axi_cdma` — Top-Level Central DMA
 
 **File:** `rtl/axi/snix_axi_cdma.sv`
 
@@ -577,7 +693,7 @@ Integration wrapper that instantiates `snix_axi_cdma_csr` and `snix_axi_mm2mm`.
 
 ---
 
-### 3.15 `snix_axi_cdma_csr` — CDMA Control & Status Registers
+#### `snix_axi_cdma_csr` — CDMA Control & Status Registers
 
 **File:** `rtl/axil/snix_axi_cdma_csr.sv`
 
@@ -591,7 +707,7 @@ AXI-Lite slave register file for the CDMA. Structure mirrors `snix_axi_dma_csr` 
 
 ---
 
-## 4. CSR Register Maps
+## 4. DMA and CDMA CSR Register Maps
 
 Base address is application-defined. All registers are 32 bits wide. Byte offsets assume `AXIL_DATA_WIDTH = 32`.
 
@@ -748,7 +864,7 @@ while (!(read_reg(STATUS) & 0x1));
 
 ---
 
-## 5. AXI Interface Signals
+## 5. DMA and CDMA External Interfaces
 
 All ports on `snix_axi_dma` use active-high valid/ready handshaking. Reset `rst_n` is active-low, synchronised to `clk`.
 
@@ -1170,6 +1286,10 @@ The build system is driven by `make`. The `TESTNAME` variable selects which test
 | `axis_rr_converter`     | 12   | `tb/tests/axis/test_axis_rr_converter.sv`        | `snix_axis_rr_converter`         |
 | `axis_rr_upsizer`       | 13   | `tb/tests/axis/test_axis_rr_upsizer.sv`          | `snix_axis_rr_upsizer`           |
 | `axis_rr_downsizer`     | 14   | `tb/tests/axis/test_axis_rr_downsizer.sv`        | `snix_axis_rr_downsizer`         |
+| `uart_lite`             | 15   | `tb/tests/uart/test_uart_lite.sv`                | `snix_uart_lite`                 |
+| `uart_axil_slave`       | 16   | `tb/tests/axil/test_uart_axil_slave.sv`          | `snix_uart_axil_slave`           |
+| `uart_axil_master`      | 17   | `tb/tests/axil/test_uart_axil_master.sv`         | `snix_uart_axil_master`          |
+| `axil_gpio`             | 18   | `tb/tests/axil/test_axil_gpio.sv`                | `snix_axil_gpio`                 |
 
 **Compile and run a test**
 
@@ -1197,6 +1317,14 @@ make run TESTNAME=axis_afifo
 
 # AXI-Lite register test
 make run TESTNAME=axil_register
+
+# AXI-Lite GPIO test
+make run TESTNAME=axil_gpio
+
+# UART core and AXI-Lite/UART bridge tests
+make run TESTNAME=uart_lite
+make run TESTNAME=uart_axil_slave
+make run TESTNAME=uart_axil_master
 
 # Width converters — integer ratio
 make run TESTNAME=axis_upsizer    SRC_BP=1 SINK_BP=1
@@ -1387,7 +1515,7 @@ Four Verilator-compatible checker modules live in `tb/assertions/`. Each is inst
 | Checker file           | Instantiated in          | Checks                           |
 |------------------------|--------------------------|----------------------------------|
 | `axis_checker.sv`      | `test_axis_register.sv`, `test_axis_fifo.sv`, `test_axis_afifo.sv`, `test_dma.sv` | AXI4-Stream rules |
-| `axil_checker.sv`      | `test_axil_register.sv`, `test_dma.sv`, `test_cdma.sv`      | AXI-Lite rules   |
+| `axil_checker.sv`      | `test_axil_register.sv`, `test_axil_gpio.sv`, `test_dma.sv`, `test_cdma.sv`      | AXI-Lite rules   |
 | `axi_mm_checker.sv`    | `test_dma.sv`, `test_cdma.sv`                               | AXI4-Full rules  |
 | `axi_4k_checker.sv`    | `test_dma.sv`, `test_cdma.sv`                               | AXI4 4KB burst-boundary checks |
 

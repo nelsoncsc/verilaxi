@@ -17,13 +17,10 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
         logic [ADDR_WIDTH-1:0] wr_addr;
         logic [ADDR_WIDTH-1:0] rd_addr;
         logic [DATA_WIDTH-1:0] rd_data;
-        logic [ADDR_WIDTH-1:0] beat_addr;
         logic [2:0]            wr_size;
         logic [2:0]            rd_size;
-        logic                  rd_last;
         logic [ID_WIDTH-1:0]   rd_id;
-
-
+        logic [ID_WIDTH-1:0]   wr_id;
 
         int unsigned wr_beats_left;
         int unsigned rd_beats_left;
@@ -36,6 +33,14 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     
 
         bit wr_resp_pending;
+        bit rd_active;
+        bit aw_seen_high;
+        bit ar_seen_high;
+        logic [ADDR_WIDTH-1:0] rd_addr_q[$];
+        logic [2:0]            rd_size_q[$];
+        logic [ID_WIDTH-1:0]   rd_id_q[$];
+        int unsigned           rd_beats_q[$];
+        int unsigned           max_outstanding_reads = 8;
 
         // 0–100: probability (%) that a ready signal asserts on any given cycle.
         // 100 = always ready (no backpressure). Set before calling run(), or
@@ -66,8 +71,15 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
             wr_beats_left   = 0;
             rd_beats_left   = 0;
             wr_resp_pending = 0;
+            rd_active       = 0;
+            aw_seen_high    = 0;
+            ar_seen_high    = 0;
             wr_size         = 0;
             rd_size         = 0;
+            rd_addr_q.delete();
+            rd_size_q.delete();
+            rd_id_q.delete();
+            rd_beats_q.delete();
         endtask: reset
 
         // --------------------------------------------------
@@ -79,12 +91,18 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                 // -----------------------------
                 // WRITE ADDRESS CHANNEL (AW)
                 // -----------------------------
+                if (!vif.awvalid) begin
+                    aw_seen_high = 1'b0;
+                end
+
                 // Only claim a new write transaction if none is active
-                if (vif.awvalid && wr_beats_left == 0 && rand_ready()) begin
+                if (vif.awvalid && !aw_seen_high && wr_beats_left == 0 && rand_ready()) begin
                     $info("%s: run: AW received, addr=%h, len=%0d, size=%d", this.name, vif.awaddr, vif.awlen, vif.awsize);
                     wr_addr       = vif.awaddr;
                     wr_beats_left = int'(vif.awlen) + 1;
                     wr_size       = vif.awsize;
+                    wr_id         = vif.awid;
+                    aw_seen_high  = 1'b1;
                     vif.awready   <= 1;
                 end
                 else begin
@@ -117,13 +135,18 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     // Increment address
                     wr_addr = wr_addr + bytes_per_beat;
 
-                    // Decrement beats left
-                    wr_beats_left = wr_beats_left > 0 && !vif.wlast ? wr_beats_left - 1 : 0;
-
-                    // WLAST
-                    if (vif.wlast) begin
+                    if ((wr_beats_left == 1) || vif.wlast) begin
+                        if ((wr_beats_left != 1) && vif.wlast) begin
+                            $warning("%s: early WLAST observed, terminating write burst early", this.name);
+                        end
+                        if ((wr_beats_left == 1) && !vif.wlast) begin
+                            $warning("%s: final write beat arrived without WLAST, completing burst", this.name);
+                        end
+                        wr_beats_left   = 0;
                         wr_resp_pending = 1;
                         $info("%s: WLAST detected, wr_resp_pending=1", this.name);
+                    end else begin
+                        wr_beats_left = wr_beats_left - 1;
                     end
                 end
 
@@ -132,10 +155,10 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                 // WRITE RESPONSE CHANNEL (B)
                 // -----------------------------
                 if (!vif.bvalid && wr_resp_pending) begin
-                    vif.bid    <= vif.awid;
+                    vif.bid    <= wr_id;
                     vif.bresp  <= 2'b00;
                     vif.bvalid <= 1;
-                    $info("%s: run: Driving BVALID, bid=%0d", this.name, vif.awid);
+                    $info("%s: run: Driving BVALID, bid=%0d", this.name, wr_id);
                 end 
                 else if (vif.bvalid && vif.bready) begin
                     vif.bvalid      <= 0;
@@ -146,24 +169,37 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                 // -----------------------------
                 // READ ADDRESS CHANNEL (AR)
                 // -----------------------------
-                if (vif.arvalid && rd_beats_left == 0 && rand_ready()) begin
-                    rd_addr       = vif.araddr;
-                    rd_beats_left = int'(vif.arlen) + 1;
-                    rd_size       = vif.arsize;
-                    rd_id         = vif.arid;
+                if (!vif.arvalid) begin
+                    ar_seen_high = 1'b0;
+                end
+
+                if (vif.arvalid && !ar_seen_high && (rd_addr_q.size() < max_outstanding_reads) && rand_ready()) begin
+                    rd_addr_q.push_back(vif.araddr);
+                    rd_beats_q.push_back(int'(vif.arlen) + 1);
+                    rd_size_q.push_back(vif.arsize);
+                    rd_id_q.push_back(vif.arid);
+                    ar_seen_high  = 1'b1;
                     vif.arready   <= 1;
 
-                    $info("%s: AR accepted addr=0x%h len=%0d size=%0d",
-                        this.name, rd_addr, vif.arlen, rd_size);
+                    $info("%s: AR accepted addr=0x%h len=%0d size=%0d id=%0d",
+                        this.name, vif.araddr, vif.arlen, vif.arsize, vif.arid);
                 end
                 else begin
                     vif.arready <= 0;
                 end
 
+                if (!rd_active && (rd_addr_q.size() > 0)) begin
+                    rd_addr       = rd_addr_q.pop_front();
+                    rd_beats_left = rd_beats_q.pop_front();
+                    rd_size       = rd_size_q.pop_front();
+                    rd_id         = rd_id_q.pop_front();
+                    rd_active     = 1'b1;
+                end
+
                 // -----------------------------
                 // READ DATA CHANNEL (R)
                 // -----------------------------
-                if (rd_beats_left > 0) begin
+                if (rd_active && (rd_beats_left > 0)) begin
 
                     bytes_per_beat = 1 << rd_size;
 
@@ -171,6 +207,9 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     if (vif.rvalid && vif.rready) begin
                         rd_addr       = rd_addr + bytes_per_beat;
                         rd_beats_left = rd_beats_left - 1;
+                        if (rd_beats_left == 1) begin
+                            rd_active = 1'b0;
+                        end
                     end
 
                     // Drive next beat only if the bus is free and beats remain
@@ -196,10 +235,10 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     end
                 end
 
-// Clear rvalid after final beat handshake
-if (vif.rvalid && vif.rready && vif.rlast) begin
-    vif.rvalid <= 0;
-end
+                // Clear rvalid after final beat handshake
+                if (vif.rvalid && vif.rready && vif.rlast) begin
+                    vif.rvalid <= 0;
+                end
 
                 // -----------------------------
                 // MONITOR LOGGING

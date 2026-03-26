@@ -4,11 +4,14 @@
 
 It provides simple, task-based **AXI**, **AXI-Lite**, and **AXI-Stream** drivers, monitors, and test environments designed for fast RTL bring-up — without UVM.
 
+For a deeper walkthrough of the architecture, module inventory, register maps, and verification flow, see the [Developer Guide](verilaxi_developer_guide.md).
+
 ---
 
 ## ✨ Features
 
 - ✅ AXI4, AXI-Lite, and AXI-Stream support
+- ✅ UART core, AXI-Lite GPIO, and UART↔AXI-Lite control-plane blocks
 - ✅ AXI-Stream packet, beat, and weighted round-robin arbitration
 - ✅ AXI-Stream width converters — integer-ratio (k:1 up, 1:k down) and rational-ratio (e.g. 16↔24)
 - ✅ Synchronous and asynchronous AXI-Stream FIFOs
@@ -43,17 +46,19 @@ These **sistenix** posts are the narrative layer for the repository. The intent 
 verilaxi/
 ├── rtl/
 │   ├── axi/        snix_axi_dma, snix_axi_cdma, snix_axi_mm2mm, mm2s, s2mm
-│   ├── axil/       snix_axil_register, snix_axi_dma_csr, snix_axi_cdma_csr
+│   ├── axil/       snix_axil_register, snix_axil_gpio, snix_uart_axil_slave, snix_uart_axil_master
+│   │               snix_axi_dma_csr, snix_axi_cdma_csr
 │   ├── axis/       snix_axis_arbiter, snix_axis_fifo, snix_axis_afifo, snix_axis_register
 │   │               snix_axis_upsizer, snix_axis_downsizer
 │   │               snix_axis_rr_converter, snix_axis_rr_upsizer, snix_axis_rr_downsizer
+│   ├── uart/       snix_uart_lite
 │   └── common/     snix_sync_fifo, snix_async_fifo, snix_register_slice
 ├── tb/
 │   ├── classes/     axi_master, axi_slave, axil_master, axis_source, axis_sink …
 │   ├── interfaces/  axi4_if, axil_if, axis_if
 │   ├── packages/    axi_pkg, axi_dma_pkg, axi_cdma_pkg
 │   ├── assertions/  axis_checker, axil_checker, axi_mm_checker, axi_4k_checker
-│   └── tests/       test_dma, test_cdma, test_axil_register, test_axis_*
+│   └── tests/       test_dma, test_cdma, test_axil_register, test_axil_gpio, test_axis_*
 ├── filelists/      common.f, tb_top.f
 ├── mk/             config.mk, build.mk, menu.mk, help.mk
 └── Makefile
@@ -108,6 +113,10 @@ make
 make run TESTNAME=dma            # AXI4 DMA (stream → memory, memory → stream)
 make run TESTNAME=cdma           # AXI4 CDMA (memory-to-memory copy)
 make run TESTNAME=axil_register  # AXI-Lite register
+make run TESTNAME=axil_gpio      # AXI-Lite GPIO with user LEDs, RGB LEDs, and debounced buttons
+make run TESTNAME=uart_lite      # UART core loopback test
+make run TESTNAME=uart_axil_slave   # AXI-Lite UART peripheral
+make run TESTNAME=uart_axil_master  # UART-to-AXI-Lite bridge
 make run TESTNAME=axis_register  # AXI-Stream register slice
 make run TESTNAME=axis_arbiter   # AXI-Stream round-robin arbiter (packet mode)
 make run TESTNAME=axis_arbiter_beat      # AXI-Stream beat-mode arbiter
@@ -157,6 +166,10 @@ make run TESTNAME=dma TESTTYPE=3 READY_PROB=80
 
 ```bash
 make synth SYNTH_NAME=axis_arbiter        SYNTH_TARGET=generic
+make synth SYNTH_NAME=uart_lite           SYNTH_TARGET=generic
+make synth SYNTH_NAME=axil_gpio           SYNTH_TARGET=generic
+make synth SYNTH_NAME=uart_axil_slave     SYNTH_TARGET=generic
+make synth SYNTH_NAME=uart_axil_master    SYNTH_TARGET=generic
 make synth SYNTH_NAME=axis_fifo           SYNTH_TARGET=generic
 make synth SYNTH_NAME=axis_afifo          SYNTH_TARGET=artix7
 make synth SYNTH_NAME=axis_upsizer        SYNTH_TARGET=artix7
@@ -208,7 +221,7 @@ scripts/sweep.sh synth both
 scripts/sweep.sh all both
 ```
 
-The simulation sweep covers the AXIS register, arbiter (packet/beat/weighted), FIFO, AFIFO, upsizer, downsizer, rr_converter, rr_upsizer, rr_downsizer matrices, `axil_register`, and DMA/CDMA runs with `READY_PROB=70`. The synthesis sweep covers all supported designs for `generic`, `artix7`, or both.
+The simulation sweep covers the AXIS register, UART core, AXI-Lite GPIO, UART/AXI-Lite control-plane blocks, arbiter (packet/beat/weighted), FIFO, AFIFO, upsizer, downsizer, rr_converter, rr_upsizer, rr_downsizer matrices, `axil_register`, and DMA/CDMA runs with `READY_PROB=70`. The synthesis sweep covers all supported designs for `generic`, `artix7`, or both.
 
 ## Acknowledgements
 

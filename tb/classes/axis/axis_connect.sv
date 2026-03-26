@@ -15,6 +15,7 @@ class axis_connect;
         forever @(posedge src_vif.ACLK) begin
             // Propagate only when source is valid and sink is ready
             sink_vif.tdata  = src_vif.tdata;
+            sink_vif.tkeep  = src_vif.tkeep;
             sink_vif.tuser  = src_vif.tuser;
             sink_vif.tlast  = src_vif.tlast;
             src_vif.tready  = sink_vif.tready;

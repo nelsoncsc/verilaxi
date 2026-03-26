@@ -25,6 +25,8 @@ rtl/common/snix_register_slice.sv
 rtl/common/snix_sync_fifo.sv
 rtl/common/snix_async_fifo.sv
 
+rtl/uart/snix_uart_lite.sv
+
 rtl/axis/snix_axis_register.sv
 rtl/axis/snix_axis_fifo.sv
 rtl/axis/snix_axis_afifo.sv
@@ -36,6 +38,9 @@ rtl/axis/snix_axis_rr_upsizer.sv
 rtl/axis/snix_axis_rr_downsizer.sv
 
 rtl/axil/snix_axil_register.sv
+rtl/axil/snix_axil_gpio.sv
+rtl/axil/snix_uart_axil_master.sv
+rtl/axil/snix_uart_axil_slave.sv
 rtl/axil/snix_axi_dma_csr.sv
 rtl/axil/snix_axi_cdma_csr.sv
 

@@ -11,14 +11,16 @@ class axil_master  #(parameter int ADDR_WIDTH = 32,
         task reset();
             vif.awvalid = 0;
             vif.wvalid  = 0;
+            vif.wstrb   = 0;
             vif.bready  = 0;
             vif.arvalid = 0;
-            vif.arready = 0;
+            vif.rready  = 0;
         endtask: reset
 
         // Single AXI-Lite Write
         task write(input logic [ADDR_WIDTH-1:0] addr,
-                   input logic [DATA_WIDTH-1:0] data);
+                   input logic [DATA_WIDTH-1:0] data,
+                   input logic [DATA_WIDTH/8-1:0] strb = {DATA_WIDTH/8{1'b1}});
 
             // -----------------------------
             // Write Address Channel (AW)
@@ -33,7 +35,7 @@ class axil_master  #(parameter int ADDR_WIDTH = 32,
             // Write Data Channel (W)
             // -----------------------------
             vif.wdata  <= data;
-            vif.wstrb  <= {DATA_WIDTH/8{1'b1}}; // drive all bytes valid
+            vif.wstrb  <= strb;
             vif.wvalid <= 1;
             @(posedge vif.ACLK);
             while (!vif.wready) @(posedge vif.ACLK); // wait slave handshake
@@ -45,9 +47,12 @@ class axil_master  #(parameter int ADDR_WIDTH = 32,
             vif.bready <= 1;
             @(posedge vif.ACLK);
             while (!vif.bvalid) @(posedge vif.ACLK); // wait slave
+            if (vif.bresp !== 2'b00) begin
+                $fatal(1, "axil_m: BRESP error %b on write to %h", vif.bresp, addr);
+            end
             vif.bready <= 0;
 
-            $info("axil_m: wrote %h", data);
+            $info("axil_m: wrote %h (wstrb=%h)", data, strb);
         endtask: write
 
         
@@ -69,10 +74,13 @@ class axil_master  #(parameter int ADDR_WIDTH = 32,
             // Handshake: tell slave we are ready to take data
             vif.rready = 1;
             @(posedge vif.ACLK);
+            if (vif.rresp !== 2'b00) begin
+                $fatal(1, "axil_m: RRESP error %b on read from %h", vif.rresp, addr);
+            end
             data = vif.rdata;       // Capture the data during handshake
             vif.rready = 0;
 
             $info("axil_m: read %h from addr %h", data, addr);
         endtask: read
 
- endclass: axil_master
+endclass: axil_master

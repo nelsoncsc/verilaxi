@@ -51,6 +51,8 @@ run_sim_sweep() {
         done
     done
 
+    run_sim_case "uart_lite" TESTNAME=uart_lite
+
     for src_bp in 0 1; do
         for sink_bp in 0 1; do
             run_sim_case \
@@ -138,6 +140,9 @@ run_sim_sweep() {
     done
 
     run_sim_case "axil_register" TESTNAME=axil_register
+    run_sim_case "axil_gpio" TESTNAME=axil_gpio
+    run_sim_case "uart_axil_slave" TESTNAME=uart_axil_slave
+    run_sim_case "uart_axil_master" TESTNAME=uart_axil_master
 
     for testtype in 0 1 2 3 4; do
         run_sim_case \
@@ -177,7 +182,7 @@ run_synth_sweep() {
     esac
 
     for target in "${targets[@]}"; do
-        for synth_name in axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register dma cdma; do
+        for synth_name in axis_register uart_lite axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register axil_gpio uart_axil_slave uart_axil_master dma cdma; do
             run_synth_case \
                 "${synth_name} target=${target}" \
                 SYNTH_NAME="${synth_name}" SYNTH_TARGET="${target}"
