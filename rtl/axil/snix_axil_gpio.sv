@@ -111,7 +111,7 @@ module snix_axil_gpio #(
         clr_mask      = '0;
         read_data_next = '0;
 
-        if (awaddr_reg == BTN_EDGE_ADDR) begin
+        if (write_ready && (awaddr_reg == BTN_EDGE_ADDR)) begin
             clr_mask[NUM_BUTTONS-1:0] = wdata_reg[NUM_BUTTONS-1:0] & write_mask[NUM_BUTTONS-1:0];
         end
 

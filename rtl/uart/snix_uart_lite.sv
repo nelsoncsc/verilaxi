@@ -62,6 +62,8 @@ module snix_uart_lite #(
     logic [2:0]            rx_bit_idx;
     logic [7:0]            tx_shift_reg;
     logic [7:0]            rx_shift_reg;
+    logic                  uart_rx_meta;
+    logic                  uart_rx_sync;
 
     logic [7:0] tx_fifo_data;
     logic [7:0] rx_fifo_data;
@@ -157,6 +159,17 @@ module snix_uart_lite #(
         end
     end
 
+    // Synchronize the asynchronous UART RX input before the receive FSM uses it.
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            uart_rx_meta <= 1'b1;
+            uart_rx_sync <= 1'b1;
+        end else begin
+            uart_rx_meta <= uart_rx;
+            uart_rx_sync <= uart_rx_meta;
+        end
+    end
+
     // -----------------------------------------------------------------
     // UART transmitter
     // -----------------------------------------------------------------
@@ -242,7 +255,7 @@ module snix_uart_lite #(
             case (rx_state)
                 RX_IDLE: begin
                     rx_busy <= 1'b0;
-                    if (!uart_rx) begin
+                    if (!uart_rx_sync) begin
                         rx_busy     <= 1'b1;
                         rx_state    <= RX_START;
                         rx_baud_cnt <= HALF_BIT_CLKS - 1;
@@ -252,7 +265,7 @@ module snix_uart_lite #(
 
                 RX_START: begin
                     if (rx_baud_cnt == 0) begin
-                        if (!uart_rx) begin
+                        if (!uart_rx_sync) begin
                             rx_state    <= RX_DATA;
                             rx_baud_cnt <= CLKS_PER_BIT - 1;
                         end else begin
@@ -265,7 +278,7 @@ module snix_uart_lite #(
 
                 RX_DATA: begin
                     if (rx_baud_cnt == 0) begin
-                        rx_shift_reg[rx_bit_idx] <= uart_rx;
+                        rx_shift_reg[rx_bit_idx] <= uart_rx_sync;
                         rx_baud_cnt <= CLKS_PER_BIT - 1;
                         if (rx_bit_idx == 3'd7) begin
                             rx_state <= RX_STOP;
@@ -279,7 +292,7 @@ module snix_uart_lite #(
 
                 RX_STOP: begin
                     if (rx_baud_cnt == 0) begin
-                        if (uart_rx && !rx_fifo_full) begin
+                        if (uart_rx_sync && !rx_fifo_full) begin
                             rx_fifo_wr_en <= 1'b1;
                         end
                         rx_state <= RX_IDLE;

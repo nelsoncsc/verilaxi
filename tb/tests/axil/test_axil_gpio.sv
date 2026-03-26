@@ -186,6 +186,16 @@ module test_axil_gpio #(
             $fatal(1, "test_axil_gpio: expected edge clear got 0x%0h", rd_data[1:0]);
         end
 
+        gpio_btn[0] = 1'b0;
+        wait_cycles(8);
+        gpio_btn[0] = 1'b1;
+        wait_cycles(8);
+
+        m.read(BTN_EDGE_ADDR, rd_data);
+        if (rd_data[1:0] !== 2'b01) begin
+            $fatal(1, "test_axil_gpio: expected edge relatch after clear got 0x%0h", rd_data[1:0]);
+        end
+
         $display("test_axil_gpio: PASS");
         #20 $finish;
     end
