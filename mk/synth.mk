@@ -2,7 +2,7 @@
 # Synthesis (Yosys)
 # ==================================================
 SYNTH_DIR     := $(WORK_DIR)/synth
-VALID_SYNTHS  := axis_register axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register dma cdma
+VALID_SYNTHS  := axis_register uart_lite axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register axil_gpio uart_axil_slave uart_axil_master dma cdma
 VALID_TARGETS := generic artix7
 SYNTH_NAME    ?= axis_fifo
 SYNTH_TARGET  ?= generic
@@ -31,6 +31,18 @@ else ifeq ($(SYNTH_NAME),axis_afifo_pkt)
   SYNTH_PARAM := -p "chparam -set FRAME_FIFO 1 snix_axis_afifo"
 else ifeq ($(SYNTH_NAME),axil_register)
   SYNTH_TOP   := snix_axil_register
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),axil_gpio)
+  SYNTH_TOP   := snix_axil_gpio
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),uart_lite)
+  SYNTH_TOP   := snix_uart_lite
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),uart_axil_slave)
+  SYNTH_TOP   := snix_uart_axil_slave
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),uart_axil_master)
+  SYNTH_TOP   := snix_uart_axil_master
   SYNTH_PARAM :=
 else ifeq ($(SYNTH_NAME),dma)
   SYNTH_TOP   := snix_axi_dma

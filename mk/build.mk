@@ -3,6 +3,8 @@
 # ==================================================
 .PHONY: run clean cleanall
 
+VERILATOR_JOBS ?= $(shell sh -c 'nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 1')
+
 $(OBJ_DIR)/V$(TOP_NAME): $(SIM_CPP)
 	@mkdir -p $(OBJ_DIR)
 	verilator -Wall --assert \
@@ -12,11 +14,11 @@ $(OBJ_DIR)/V$(TOP_NAME): $(SIM_CPP)
 		--cc --sv --exe --build \
 		--timing --trace-fst --trace-structs \
 		-I$(RTL_DIR) -I$(TB_DIR) \
-		--top-module $(TOP_NAME) \
-		$(VERILATOR_DEFS) \
-		$(VERILATOR_SRCS) \
-		--Mdir $(OBJ_DIR) \
-		-j $$(nproc 2>/dev/null || sysctl -n hw.logicalcpu)
+			--top-module $(TOP_NAME) \
+			$(VERILATOR_DEFS) \
+			$(VERILATOR_SRCS) \
+			--Mdir $(OBJ_DIR) \
+			-j $(VERILATOR_JOBS)
 
 run: $(OBJ_DIR)/V$(TOP_NAME)
 	@mkdir -p $(LOG_DIR) $(WAVE_DIR)

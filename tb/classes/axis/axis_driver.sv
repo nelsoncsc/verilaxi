@@ -1,10 +1,13 @@
-class axis_driver;
+class axis_driver #(int DATA_WIDTH = 8,
+                    int USER_WIDTH = 1,
+                    int KEEP_WIDTH = ((DATA_WIDTH + 7) / 8));
     // Handles to BFMs
-    axis_source  src_bfm;
-    axis_sink    sink_bfm;
+    axis_source #(DATA_WIDTH, USER_WIDTH, KEEP_WIDTH) src_bfm;
+    axis_sink   #(DATA_WIDTH, USER_WIDTH, KEEP_WIDTH) sink_bfm;
 
     // Constructor
-    function new(axis_source s, axis_sink r);
+    function new(axis_source #(DATA_WIDTH, USER_WIDTH, KEEP_WIDTH) s,
+                 axis_sink   #(DATA_WIDTH, USER_WIDTH, KEEP_WIDTH) r);
         src_bfm  = s;
         sink_bfm = r;
     endfunction: new

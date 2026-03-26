@@ -19,6 +19,10 @@ menu:
 		echo " 12) axis_rr_converter (rational ratio, default IN=32 OUT=48)"; \
 		echo " 13) axis_rr_upsizer (rational up, default IN=16 OUT=24)"; \
 		echo " 14) axis_rr_downsizer (rational down, default IN=24 OUT=16)"; \
+		echo " 15) uart_lite"; \
+		echo " 16) uart_axil_slave"; \
+		echo " 17) uart_axil_master"; \
+		echo " 18) axil_gpio"; \
 		echo ""; \
 		echo "Commands:"; \
 		echo "  s) synth — synthesize a design with Yosys"; \
@@ -26,7 +30,7 @@ menu:
 		echo "  c) clean all"; \
 		echo "  q) quit"; \
 		echo ""; \
-		echo "Select a test [1-14], command, or q to quit:"; \
+		echo "Select a test [1-18], command, or q to quit:"; \
 		read -r choice; \
 		case "$$choice" in \
 			1) \
@@ -160,24 +164,48 @@ menu:
 			$(MAKE) clean run TESTNAME=axis_rr_downsizer SRC_BP=$$SRC_BP SINK_BP=$$SINK_BP; \
 			code=$$?; \
 			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		15) \
+			echo "You selected UART_LITE test."; \
+			$(MAKE) clean run TESTNAME=uart_lite; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		16) \
+			echo "You selected UART_AXIL_SLAVE test."; \
+			$(MAKE) clean run TESTNAME=uart_axil_slave; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		17) \
+			echo "You selected UART_AXIL_MASTER test."; \
+			$(MAKE) clean run TESTNAME=uart_axil_master; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		18) \
+			echo "You selected AXIL_GPIO test."; \
+			$(MAKE) clean run TESTNAME=axil_gpio; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
 		s|S) \
 				echo "Select design to synthesize:"; \
 				echo "  1) axis_register"; \
-				echo "  2) axis_arbiter"; \
-				echo "  3) axis_fifo (streaming, FRAME_FIFO=0)"; \
-				echo "  4) axis_fifo (frame mode, FRAME_FIFO=1)"; \
-				echo "  5) axis_afifo (streaming, FRAME_FIFO=0)"; \
-				echo "  6) axis_afifo (frame mode, FRAME_FIFO=1)"; \
-				echo "  7) axil_register"; \
-				echo "  8) dma"; \
-				echo "  9) cdma"; \
-				echo " 10) axis_upsizer (integer k:1, IN=8 OUT=32)"; \
-				echo " 11) axis_downsizer (integer 1:k, IN=32 OUT=8)"; \
-				echo " 12) axis_rr_converter (rational ratio, IN=32 OUT=48)"; \
-				echo " 13) axis_rr_upsizer (rational up, IN=16 OUT=24)"; \
-				echo " 14) axis_rr_downsizer (rational down, IN=24 OUT=16)"; \
-				echo " 15) all"; \
-				read -p "Enter choice [1-15]: " schoice; \
+				echo "  2) uart_lite"; \
+				echo "  3) axis_arbiter"; \
+				echo "  4) axis_fifo (streaming, FRAME_FIFO=0)"; \
+				echo "  5) axis_fifo (frame mode, FRAME_FIFO=1)"; \
+				echo "  6) axis_afifo (streaming, FRAME_FIFO=0)"; \
+				echo "  7) axis_afifo (frame mode, FRAME_FIFO=1)"; \
+				echo "  8) axil_register"; \
+				echo "  9) axil_gpio"; \
+				echo " 10) uart_axil_slave"; \
+				echo " 11) uart_axil_master"; \
+				echo " 12) dma"; \
+				echo " 13) cdma"; \
+				echo " 14) axis_upsizer (integer k:1, IN=8 OUT=32)"; \
+				echo " 15) axis_downsizer (integer 1:k, IN=32 OUT=8)"; \
+				echo " 16) axis_rr_converter (rational ratio, IN=32 OUT=48)"; \
+				echo " 17) axis_rr_upsizer (rational up, IN=16 OUT=24)"; \
+				echo " 18) axis_rr_downsizer (rational down, IN=24 OUT=16)"; \
+				echo " 19) all"; \
+				read -p "Enter choice [1-19]: " schoice; \
 				echo "Synthesis target:"; \
 				echo "  g) generic  -- technology-independent (default)"; \
 				echo "  a) artix7   -- Xilinx 7-series (LUT6/FDRE/CARRY4 cells)"; \
@@ -188,20 +216,24 @@ menu:
 				esac; \
 				case "$$schoice" in \
 					1)  $(MAKE) synth SYNTH_NAME=axis_register      SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					2)  $(MAKE) synth SYNTH_NAME=axis_arbiter       SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					3)  $(MAKE) synth SYNTH_NAME=axis_fifo          SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					4)  $(MAKE) synth SYNTH_NAME=axis_fifo_pkt      SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					5)  $(MAKE) synth SYNTH_NAME=axis_afifo         SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					6)  $(MAKE) synth SYNTH_NAME=axis_afifo_pkt     SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					7)  $(MAKE) synth SYNTH_NAME=axil_register      SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					8)  $(MAKE) synth SYNTH_NAME=dma                SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					9)  $(MAKE) synth SYNTH_NAME=cdma               SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					10) $(MAKE) synth SYNTH_NAME=axis_upsizer       SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					11) $(MAKE) synth SYNTH_NAME=axis_downsizer     SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					12) $(MAKE) synth SYNTH_NAME=axis_rr_converter  SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					13) $(MAKE) synth SYNTH_NAME=axis_rr_upsizer    SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					14) $(MAKE) synth SYNTH_NAME=axis_rr_downsizer  SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					15) $(MAKE) synth-all                           SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					2)  $(MAKE) synth SYNTH_NAME=uart_lite          SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					3)  $(MAKE) synth SYNTH_NAME=axis_arbiter       SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					4)  $(MAKE) synth SYNTH_NAME=axis_fifo          SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					5)  $(MAKE) synth SYNTH_NAME=axis_fifo_pkt      SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					6)  $(MAKE) synth SYNTH_NAME=axis_afifo         SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					7)  $(MAKE) synth SYNTH_NAME=axis_afifo_pkt     SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					8)  $(MAKE) synth SYNTH_NAME=axil_register      SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					9)  $(MAKE) synth SYNTH_NAME=axil_gpio          SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					10) $(MAKE) synth SYNTH_NAME=uart_axil_slave    SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					11) $(MAKE) synth SYNTH_NAME=uart_axil_master   SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					12) $(MAKE) synth SYNTH_NAME=dma                SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					13) $(MAKE) synth SYNTH_NAME=cdma               SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					14) $(MAKE) synth SYNTH_NAME=axis_upsizer       SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					15) $(MAKE) synth SYNTH_NAME=axis_downsizer     SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					16) $(MAKE) synth SYNTH_NAME=axis_rr_converter  SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					17) $(MAKE) synth SYNTH_NAME=axis_rr_upsizer    SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					18) $(MAKE) synth SYNTH_NAME=axis_rr_downsizer  SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					19) $(MAKE) synth-all                           SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					*) echo "Invalid choice." ;; \
 				esac ;; \
 			h|H) $(MAKE) help ;; \
