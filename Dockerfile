@@ -29,7 +29,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 
 WORKDIR /tmp
 
-RUN git clone --depth 1 --branch v5.046 https://github.com/verilator/verilator.git \
+RUN git clone --depth 1 --branch v5.048 https://github.com/verilator/verilator.git \
  && cd verilator \
  && autoconf \
  && ./configure \

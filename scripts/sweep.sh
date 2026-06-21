@@ -6,6 +6,7 @@ cd "$ROOT_DIR"
 
 MODE="${1:-all}"
 SYNTH_TARGET="${2:-both}"
+SWEEP_OBJ_DIR="${OBJ_DIR:-work/obj_sweep_$$}"
 
 SIM_TOTAL=0
 SIM_PASS=0
@@ -18,7 +19,7 @@ run_sim_case() {
     SIM_TOTAL=$((SIM_TOTAL + 1))
     echo
     echo "=== SIM: ${label} ==="
-    if make clean run "$@"; then
+    if make clean run OBJ_DIR="$SWEEP_OBJ_DIR" "$@"; then
         SIM_PASS=$((SIM_PASS + 1))
     else
         echo "SIM FAILED: ${label}" >&2

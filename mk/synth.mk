@@ -92,13 +92,13 @@ synth:
 	fi
 	@mkdir -p $(SYNTH_DIR)
 	@echo "Synthesizing $(SYNTH_NAME) (top: $(SYNTH_TOP), target: $(SYNTH_TARGET))..."
-	yosys \
+	bash -o pipefail -c 'yosys \
 		-p "read_verilog -sv -I rtl $(RTL_FILES)" \
 		$(SYNTH_PARAM) \
 		-p "$(SYNTH_CMD)" \
 		-p "stat" \
 		-p "write_verilog -noattr $(SYNTH_NET)" \
-		2>&1 | tee $(SYNTH_LOG)
+		2>&1 | tee "$(SYNTH_LOG)"'
 
 synth-all:
 	@for name in $(VALID_SYNTHS); do \
