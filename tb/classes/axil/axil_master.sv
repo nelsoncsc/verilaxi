@@ -25,32 +25,33 @@ class axil_master  #(parameter int ADDR_WIDTH = 32,
             // -----------------------------
             // Write Address Channel (AW)
             // -----------------------------
-            vif.awaddr  <= addr;
-            vif.awvalid <= 1;
-            @(posedge vif.ACLK);
-            while (!vif.awready) @(posedge vif.ACLK); // wait slave
-            vif.awvalid <= 0;
+            @(negedge vif.ACLK);
+            vif.awaddr  = addr;
+            vif.awvalid = 1;
+            do @(posedge vif.ACLK); while (!vif.awready);
+            @(negedge vif.ACLK);
+            vif.awvalid = 0;
 
             // -----------------------------
             // Write Data Channel (W)
             // -----------------------------
-            vif.wdata  <= data;
-            vif.wstrb  <= strb;
-            vif.wvalid <= 1;
-            @(posedge vif.ACLK);
-            while (!vif.wready) @(posedge vif.ACLK); // wait slave handshake
-            vif.wvalid <= 0;
+            vif.wdata  = data;
+            vif.wstrb  = strb;
+            vif.wvalid = 1;
+            do @(posedge vif.ACLK); while (!vif.wready);
+            @(negedge vif.ACLK);
+            vif.wvalid = 0;
 
             // -----------------------------
             // Write Response Channel (B)
             // -----------------------------
-            vif.bready <= 1;
-            @(posedge vif.ACLK);
-            while (!vif.bvalid) @(posedge vif.ACLK); // wait slave
+            vif.bready = 1;
+            do @(posedge vif.ACLK); while (!vif.bvalid);
             if (vif.bresp !== 2'b00) begin
                 $fatal(1, "axil_m: BRESP error %b on write to %h", vif.bresp, addr);
             end
-            vif.bready <= 0;
+            @(negedge vif.ACLK);
+            vif.bready = 0;
 
             $info("axil_m: wrote %h (wstrb=%h)", data, strb);
         endtask: write
@@ -60,24 +61,22 @@ class axil_master  #(parameter int ADDR_WIDTH = 32,
         task read(input  logic [ADDR_WIDTH-1:0] addr,
                   output logic [DATA_WIDTH-1:0] data);
        
-            // Issue read address
+            // Issue read address away from the sampling edge.
+            @(negedge vif.ACLK);
             vif.araddr  = addr;
             vif.arvalid = 1'b1;
-            @(posedge vif.ACLK);
-            while (!vif.arready) @(posedge vif.ACLK);
+            do @(posedge vif.ACLK); while (!vif.arready);
+            @(negedge vif.ACLK);
             vif.arvalid = 0;
 
-            // Wait for read data valid
-            @(posedge vif.ACLK);
-            while (!vif.rvalid) @(posedge vif.ACLK);
-
-            // Handshake: tell slave we are ready to take data
+            // Assert READY before the edge and sample data on the handshake.
             vif.rready = 1;
-            @(posedge vif.ACLK);
+            do @(posedge vif.ACLK); while (!vif.rvalid);
             if (vif.rresp !== 2'b00) begin
                 $fatal(1, "axil_m: RRESP error %b on read from %h", vif.rresp, addr);
             end
-            data = vif.rdata;       // Capture the data during handshake
+            data = vif.rdata;
+            @(negedge vif.ACLK);
             vif.rready = 0;
 
             $info("axil_m: read %h from addr %h", data, addr);

@@ -404,10 +404,8 @@ module test_dma     #(parameter int ADDR_WIDTH = 32,
                 axi_dma_drv.src_bp_mode  = 1'b1;
                 axi_dma_drv.sink_bp_mode = 1'b1;
                 for(int i=0; i<4; i++) begin
-                    fork
-                        axi_dma_drv.test_wr_dma(i, base, len, size, num_bytes, wr_data);
-                        axi_dma_drv.test_rd_dma(i, base, len, size, num_bytes, rd_data);
-                    join
+                    axi_dma_drv.test_duplex_dma(i, base, len, size, num_bytes,
+                                                wr_data, rd_data);
                 end
             end
             3'd3    : begin

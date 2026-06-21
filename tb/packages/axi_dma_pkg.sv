@@ -267,47 +267,25 @@ package axi_dma_pkg;
             s_axis_vif.tlast  = 0;
 
             while (beat < total_beats) begin
-                // Pre-posedge: set up tdata/tlast and maybe assert tvalid.
-                // These will be sampled by the FIFO at the upcoming posedge.
-                s_axis_vif.tdata  = wr_data[mem_index + beat];
-                s_axis_vif.tlast  = (beat+1) % int'(int'(wr_len)+1) == 0;
-
-                // AXI rule: only randomize when tvalid is currently deasserted.
-                if (!s_axis_vif.tvalid)
+                @(negedge s_axis_vif.ACLK);
+                if (!s_axis_vif.tvalid) begin
+                    s_axis_vif.tdata  = wr_data[mem_index + beat];
+                    s_axis_vif.tlast  = (beat+1) % int'(int'(wr_len)+1) == 0;
                     s_axis_vif.tvalid = $urandom_range(0, 99) < high_pct;
+                end
 
+                @(posedge s_axis_vif.ACLK);
                 if (s_axis_vif.tvalid && s_axis_vif.tready) begin
-                    // Handshake will happen at the next posedge.
-                    // Wait for it first so the FIFO latches tvalid=1.
-                    @(posedge s_axis_vif.ACLK);
                     beat++;
-
-                    // After the handshake posedge, the FIFO may have updated
-                    // fifo_full in the NBA region, dropping tready to 0.
-                    // The SVA checker (post-NBA) sees tvalid=1, tready=0 at
-                    // this posedge.  If we deassert tvalid now and tready
-                    // stays 0 at the next posedge, the stability rule fires.
-                    // Fix: only deassert tvalid when tready is still high
-                    // (or all beats done).  If tready dropped, keep tvalid=1
-                    // and let the loop present the next beat's data.
-                    if (beat >= total_beats || s_axis_vif.tready) begin
-                        s_axis_vif.tvalid = 0;
-
-                        // One-cycle inter-burst gap after tlast
-                        if (s_axis_vif.tlast)
-                            @(posedge s_axis_vif.ACLK);
-                    end
-                    // else: tready dropped (FIFO full) — keep tvalid=1,
-                    // loop will update tdata/tlast for the next beat.
-                end else begin
-                    // No handshake this cycle (tvalid=0 or tready=0); advance clock.
-                    @(posedge s_axis_vif.ACLK);
+                    @(negedge s_axis_vif.ACLK);
+                    s_axis_vif.tvalid = 0;
+                    s_axis_vif.tlast  = 0;
                 end
             end
 
+            @(negedge s_axis_vif.ACLK);
             s_axis_vif.tvalid = 0;
             s_axis_vif.tlast  = 0;
-            @(posedge s_axis_vif.ACLK);
 
         endtask: write_stream
 
@@ -325,33 +303,25 @@ package axi_dma_pkg;
             s_axis_vif.tlast  = 0;
 
             while (beat < total_beats) begin
-                s_axis_vif.tdata  = wr_data[start_idx + beat];
-                s_axis_vif.tlast  = (beat+1) % int'(int'(wr_len)+1) == 0;
-
-                // AXI rule: only randomize when tvalid is currently deasserted.
-                if (!s_axis_vif.tvalid)
+                @(negedge s_axis_vif.ACLK);
+                if (!s_axis_vif.tvalid) begin
+                    s_axis_vif.tdata  = wr_data[start_idx + beat];
+                    s_axis_vif.tlast  = (beat+1) % int'(int'(wr_len)+1) == 0;
                     s_axis_vif.tvalid = $urandom_range(0, 99) < high_pct;
+                end
 
+                @(posedge s_axis_vif.ACLK);
                 if (s_axis_vif.tvalid && s_axis_vif.tready) begin
-                    // Handshake at next posedge — wait for it before deasserting.
-                    @(posedge s_axis_vif.ACLK);
                     beat++;
-
-                    // Same tready-drop guard as write_stream (see comment there).
-                    if (beat >= total_beats || s_axis_vif.tready) begin
-                        s_axis_vif.tvalid = 0;
-
-                        if (s_axis_vif.tlast)
-                            @(posedge s_axis_vif.ACLK);
-                    end
-                end else begin
-                    @(posedge s_axis_vif.ACLK);
+                    @(negedge s_axis_vif.ACLK);
+                    s_axis_vif.tvalid = 0;
+                    s_axis_vif.tlast  = 0;
                 end
             end
 
+            @(negedge s_axis_vif.ACLK);
             s_axis_vif.tvalid = 0;
             s_axis_vif.tlast  = 0;
-            @(posedge s_axis_vif.ACLK);
 
         endtask: write_stream_circ
 
@@ -364,15 +334,18 @@ package axi_dma_pkg;
             int mem_index   = rd_addr / bytes_per_beat;
 
             m_axis_vif.tready = 0;
-            @(posedge m_axis_vif.ACLK);
             while (beat < total_beats) begin
+                // Drive away from the active clock edge so READY is stable
+                // before both the DUT and testbench sample the handshake.
+                @(negedge m_axis_vif.ACLK);
                 m_axis_vif.tready = $urandom_range(0, 99) < high_pct;
+                @(posedge m_axis_vif.ACLK);
                 if (m_axis_vif.tvalid && m_axis_vif.tready) begin
                     rd_data[mem_index + beat] = m_axis_vif.tdata;
                     beat++;
                 end
-                @(posedge m_axis_vif.ACLK);
             end
+            @(negedge m_axis_vif.ACLK);
             m_axis_vif.tready = 0;
         endtask: read_stream
 
@@ -387,15 +360,16 @@ package axi_dma_pkg;
             int total_beats = (rd_num_bytes + bytes_per_beat - 1) / bytes_per_beat;  // Ceiling division
 
             m_axis_vif.tready = 0;
-            @(posedge m_axis_vif.ACLK);
             while (beat < total_beats) begin
+                @(negedge m_axis_vif.ACLK);
                 m_axis_vif.tready = $urandom_range(0, 99) < high_pct;
+                @(posedge m_axis_vif.ACLK);
                 if (m_axis_vif.tvalid && m_axis_vif.tready) begin
                     rd_data[start_idx + beat] = m_axis_vif.tdata;
                     beat++;
                 end
-                @(posedge m_axis_vif.ACLK);
             end
+            @(negedge m_axis_vif.ACLK);
             m_axis_vif.tready = 0;
         endtask: read_stream_circ
 
@@ -405,6 +379,7 @@ package axi_dma_pkg;
                                    input int size,
                                    input int num_bytes,
                                    ref logic [DATA_WIDTH-1:0] wr_data[]);
+            bit stream_done = 0;
 
             // Configure DMA driver properties
             wr_addr      = base + frame_idx * num_bytes;
@@ -414,7 +389,14 @@ package axi_dma_pkg;
             
             // Start the DMA
             config_wr_dma();
-            write_stream(wr_data);
+            fork
+                begin
+                    write_stream(wr_data);
+                    stream_done = 1;
+                end
+            join_none
+            while (!stream_done)
+                @(posedge axil_m.vif.ACLK);
             wait_wr_done();
 
             $display("[%0t] %s test_wr_dma frame=%0d done", $time, name, frame_idx);
@@ -427,6 +409,8 @@ package axi_dma_pkg;
                                    input int size,
                                    input int num_bytes,
                                    ref logic [DATA_WIDTH-1:0] rd_data[]);
+            bit stream_done = 0;
+
             // Configure DMA driver properties
             rd_addr      = base + frame_idx * num_bytes;
             rd_len       = len;
@@ -435,31 +419,85 @@ package axi_dma_pkg;
             
             // Start the DMA
             config_rd_dma();
-            read_stream(rd_data);
+            fork
+                begin
+                    read_stream(rd_data);
+                    stream_done = 1;
+                end
+            join_none
+            while (!stream_done)
+                @(posedge axil_m.vif.ACLK);
             wait_rd_done();
 
             $display("[%0t] %s test_rd_dma frame=%0d done", $time, name, frame_idx);
         endtask: test_rd_dma
 
+        // Full-duplex wrapper for simulators whose timing coroutines cannot
+        // reliably resume after blocking on a SystemVerilog semaphore.
+        // Serialize the shared AXI-Lite control port, but keep both independent
+        // AXI-Stream data paths concurrent.
+        task automatic test_duplex_dma(input int frame_idx,
+                                       input int base,
+                                       input int len,
+                                       input int size,
+                                       input int num_bytes,
+                                       ref logic [DATA_WIDTH-1:0] wr_data[],
+                                       ref logic [DATA_WIDTH-1:0] rd_data[]);
+            bit wr_stream_done = 0;
+            bit rd_stream_done = 0;
+
+            wr_addr      = base + frame_idx * num_bytes;
+            wr_len       = len;
+            wr_size      = size;
+            wr_num_bytes = num_bytes;
+
+            rd_addr      = base + frame_idx * num_bytes;
+            rd_len       = len;
+            rd_size      = size;
+            rd_num_bytes = num_bytes;
+
+            config_wr_dma();
+            config_rd_dma();
+
+            fork
+                begin
+                    write_stream(wr_data);
+                    wr_stream_done = 1;
+                    $display("[%0t] %s duplex write stream frame=%0d done", $time, name, frame_idx);
+                end
+                begin
+                    read_stream(rd_data);
+                    rd_stream_done = 1;
+                    $display("[%0t] %s duplex read stream frame=%0d done", $time, name, frame_idx);
+                end
+            join_none
+            // Poll on a real timing event. Verilator 5.048 does not reliably
+            // wake a wait-expression on automatic variables written by forked
+            // class-task coroutines.
+            while (!(wr_stream_done && rd_stream_done))
+                @(posedge axil_m.vif.ACLK);
+
+            wait_wr_done();
+            wait_rd_done();
+
+            $display("[%0t] %s duplex frame=%0d done", $time, name, frame_idx);
+        endtask: test_duplex_dma
+
         task test_wr_abort(ref logic [DATA_WIDTH-1:0] wr_data[]);
             // 1. Start DMA
             config_wr_dma();
 
-            // 2. Launch write_stream and abort trigger concurrently
+            // 2. Leave only the stream in the background. Keep all AXI-Lite
+            // accesses in this coroutine to avoid semaphore-resume issues.
             fork
-                begin
-                    write_stream(wr_data);
-                end
-                begin
-                    // Wait a few clock cycles and then trigger abort
-                    repeat(5) @(posedge s_axis_vif.ACLK);
-
-                    $display("[%0t] %s Triggering WR_ABORT", $time, this.name);
-                    axil_lock.get();
-                    axil_m.write(WR_CTRL, 32'b10); // set stop bit
-                    axil_lock.put();
-                end
+                write_stream(wr_data);
             join_none
+
+            repeat(5) @(posedge s_axis_vif.ACLK);
+            $display("[%0t] %s Triggering WR_ABORT", $time, this.name);
+            axil_lock.get();
+            axil_m.write(WR_CTRL, 32'b10); // set stop bit
+            axil_lock.put();
 
             // 3. Wait until DMA signals done (STATUS[0]=1)
             wait_wr_done();
@@ -475,32 +513,27 @@ package axi_dma_pkg;
         endtask: test_wr_abort
 
         task test_rd_abort(ref logic [DATA_WIDTH-1:0] rd_data[]);
-            automatic int beats_sent;
-
-            beats_sent = 0;
-
             // 1. Start DMA
             config_rd_dma();
 
-            // 2. Start sending some beats
+            // 2. Leave only the stream in the background. Keep all AXI-Lite
+            // accesses in this coroutine to avoid semaphore-resume issues.
             fork
-                begin
-                    read_stream(rd_data);
-                end
-                begin
-                    // Wait a few clock cycles and then trigger abort
-                    repeat(5) @(posedge m_axis_vif.ACLK); 
-
-                    // Assert stop
-                    $display("[%0t] %s Triggering RD_ABORT", $time, this.name);
-                    axil_lock.get();
-                    axil_m.write(RD_CTRL, 32'b10); // set stop bit
-                    axil_lock.put();
-                end
+                read_stream(rd_data);
             join_none
 
-            // 4. Wait until DMA indicates done or stop
+            repeat(5) @(posedge m_axis_vif.ACLK);
+            $display("[%0t] %s Triggering RD_ABORT", $time, this.name);
+            axil_lock.get();
+            axil_m.write(RD_CTRL, 32'b10); // set stop bit
+            axil_lock.put();
+
+            // 3. Wait until DMA indicates done or stop
             wait_rd_done();
+
+            // Stop the sink coroutine, which otherwise waits for more data.
+            disable fork;
+            m_axis_vif.tready = 0;
 
             $display("[%0t] %s RD_ABORT test completed", $time, this.name);
         endtask: test_rd_abort
