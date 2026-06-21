@@ -47,8 +47,12 @@ class axis_source #(int DATA_WIDTH = 8,
             if (!drive_valid) begin
                 bit launch_now;
 
-                launch_now = !backpressure ? 1'b1
-                                           : (($urandom(bp_seed) % 100) < p_valid);
+                if (!backpressure) begin
+                    launch_now = 1'b1;
+                end else begin
+                    launch_now = (($urandom(bp_seed) % 100) < p_valid);
+                    bp_seed = bp_seed * 32'h6c62272e ^ 32'hdc4a8873;
+                end
 
                 @(negedge vif.ACLK);
                 if (launch_now) begin
