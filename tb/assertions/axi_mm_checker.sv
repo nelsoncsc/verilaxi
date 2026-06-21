@@ -75,7 +75,7 @@ module axi_mm_checker #(
     // =========================================================================
     property p_awvalid_stable;
         @(posedge clk) disable iff (!rst_n)
-        awvalid && !awready |=> awvalid || awready;
+        awvalid && !awready |=> awvalid;
     endproperty
     assert property (p_awvalid_stable)
         else $error("%s: AWVALID deasserted before handshake", LABEL);
@@ -83,8 +83,8 @@ module axi_mm_checker #(
     property p_aw_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         awvalid && !awready |=>
-            ($stable(awaddr) && $stable(awlen) && $stable(awsize) &&
-             $stable(awburst) && $stable(awid)) || awready;
+            $stable(awaddr) && $stable(awlen) && $stable(awsize) &&
+            $stable(awburst) && $stable(awid);
     endproperty
     assert property (p_aw_payload_stable)
         else $error("%s: AW payload changed while AWVALID high, AWREADY low", LABEL);
@@ -98,7 +98,7 @@ module axi_mm_checker #(
     // =========================================================================
     property p_wvalid_stable;
         @(posedge clk) disable iff (!rst_n)
-        wvalid && !wready |=> wvalid || wready;
+        wvalid && !wready |=> wvalid;
     endproperty
     assert property (p_wvalid_stable)
         else $error("%s: WVALID deasserted before handshake", LABEL);
@@ -106,7 +106,7 @@ module axi_mm_checker #(
     property p_w_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         wvalid && !wready |=>
-            ($stable(wdata) && $stable(wstrb) && $stable(wlast)) || wready;
+            $stable(wdata) && $stable(wstrb) && $stable(wlast);
     endproperty
     assert property (p_w_payload_stable)
         else $error("%s: W payload changed while WVALID high, WREADY low", LABEL);
@@ -126,7 +126,7 @@ module axi_mm_checker #(
     // =========================================================================
     property p_bvalid_stable;
         @(posedge clk) disable iff (!rst_n)
-        bvalid && !bready |=> bvalid || bready;
+        bvalid && !bready |=> bvalid;
     endproperty
     assert property (p_bvalid_stable)
         else $error("%s: BVALID deasserted before handshake", LABEL);
@@ -146,7 +146,7 @@ module axi_mm_checker #(
     // =========================================================================
     property p_arvalid_stable;
         @(posedge clk) disable iff (!rst_n)
-        arvalid && !arready |=> arvalid || arready;
+        arvalid && !arready |=> arvalid;
     endproperty
     assert property (p_arvalid_stable)
         else $error("%s: ARVALID deasserted before handshake", LABEL);
@@ -154,8 +154,8 @@ module axi_mm_checker #(
     property p_ar_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         arvalid && !arready |=>
-            ($stable(araddr) && $stable(arlen) && $stable(arsize) &&
-             $stable(arburst) && $stable(arid)) || arready;
+            $stable(araddr) && $stable(arlen) && $stable(arsize) &&
+            $stable(arburst) && $stable(arid);
     endproperty
     assert property (p_ar_payload_stable)
         else $error("%s: AR payload changed while ARVALID high, ARREADY low", LABEL);
@@ -169,7 +169,7 @@ module axi_mm_checker #(
     // =========================================================================
     property p_rvalid_stable;
         @(posedge clk) disable iff (!rst_n)
-        rvalid && !rready |=> rvalid || rready;
+        rvalid && !rready |=> rvalid;
     endproperty
     assert property (p_rvalid_stable)
         else $error("%s: RVALID deasserted before handshake", LABEL);
@@ -177,7 +177,7 @@ module axi_mm_checker #(
     property p_r_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         rvalid && !rready |=>
-            ($stable(rdata) && $stable(rresp) && $stable(rlast) && $stable(rid)) || rready;
+            $stable(rdata) && $stable(rresp) && $stable(rlast) && $stable(rid);
     endproperty
     assert property (p_r_payload_stable)
         else $error("%s: R payload changed while RVALID high, RREADY low", LABEL);

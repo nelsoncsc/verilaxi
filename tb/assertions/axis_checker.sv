@@ -35,22 +35,10 @@ module axis_checker #(
     // Rule 1 — VALID stability
     // Spec 2.2.1: "Once TVALID is asserted it must remain asserted until the
     //              handshake occurs (TVALID && TREADY)."
-    //
-    // Post-NBA sampling caveat:
-    //   When a handshake fills the FIFO at posedge N, fifo_full goes high in
-    //   the NBA region and tready drops to 0.  The SVA checker (post-NBA) sees
-    //   tvalid=1, tready=0 at posedge N even though the handshake completed
-    //   in the active region.  The master legally deasserts tvalid at N+1, but
-    //   the naive antecedent would flag it as a violation.
-    //
-    //   Fix: exclude the cycle where tready just fell ($fell(tready)).  A
-    //   1-to-0 transition on tready means the FIFO was not-full last cycle,
-    //   implying wr_en could have been 1 in the active region (handshake).
-    //   Only check stability when tready has been continuously low.
     // =========================================================================
     property p_tvalid_stable;
         @(posedge clk) disable iff (!rst_n)
-        tvalid && !tready && !$fell(tready) |=> tvalid || tready;
+        tvalid && !tready |=> tvalid;
     endproperty
 
     assert property (p_tvalid_stable)
@@ -60,23 +48,20 @@ module axis_checker #(
     // Rule 2 — Payload stability
     // Spec 2.2.1: Payload must remain stable while TVALID is high and TREADY
     //             is low — the master may not change its mind mid-transfer.
-    //
-    // Same $fell(tready) guard as Rule 1 — after a handshake that fills the
-    // FIFO, the master may present new data for the next transfer.
     // =========================================================================
     property p_tdata_stable;
         @(posedge clk) disable iff (!rst_n)
-        tvalid && !tready && !$fell(tready) |=> $stable(tdata) || tready;
+        tvalid && !tready |=> $stable(tdata);
     endproperty
 
     property p_tlast_stable;
         @(posedge clk) disable iff (!rst_n)
-        tvalid && !tready && !$fell(tready) |=> $stable(tlast) || tready;
+        tvalid && !tready |=> $stable(tlast);
     endproperty
 
     property p_tuser_stable;
         @(posedge clk) disable iff (!rst_n)
-        tvalid && !tready && !$fell(tready) |=> $stable(tuser) || tready;
+        tvalid && !tready |=> $stable(tuser);
     endproperty
 
     assert property (p_tdata_stable)

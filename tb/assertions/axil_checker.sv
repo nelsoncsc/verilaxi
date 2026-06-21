@@ -68,7 +68,7 @@ module axil_checker #(
 
     property p_awaddr_stable;
         @(posedge clk) disable iff (!rst_n)
-        awvalid && !awready |=> $stable(awaddr) || awready;
+        awvalid && !awready |=> $stable(awaddr);
     endproperty
     assert property (p_awaddr_stable)
         else $error("%s: AWADDR changed while AWVALID high, AWREADY low", LABEL);
@@ -89,7 +89,7 @@ module axil_checker #(
 
     property p_w_payload_stable;
         @(posedge clk) disable iff (!rst_n)
-        wvalid && !wready |=> ($stable(wdata) && $stable(wstrb)) || wready;
+        wvalid && !wready |=> $stable(wdata) && $stable(wstrb);
     endproperty
     assert property (p_w_payload_stable)
         else $error("%s: W payload changed while WVALID high, WREADY low", LABEL);
@@ -130,7 +130,7 @@ module axil_checker #(
 
     property p_araddr_stable;
         @(posedge clk) disable iff (!rst_n)
-        arvalid && !arready |=> $stable(araddr) || arready;
+        arvalid && !arready |=> $stable(araddr);
     endproperty
     assert property (p_araddr_stable)
         else $error("%s: ARADDR changed while ARVALID high, ARREADY low", LABEL);
@@ -144,14 +144,14 @@ module axil_checker #(
     // =========================================================================
     property p_rvalid_stable;
         @(posedge clk) disable iff (!rst_n)
-        rvalid && !rready |=> rvalid || rready;  // allow deassert only at handshake (Verilator: post-NBA sampling)
+        rvalid && !rready |=> rvalid;
     endproperty
     assert property (p_rvalid_stable)
         else $error("%s: RVALID deasserted before handshake", LABEL);
 
     property p_r_payload_stable;
         @(posedge clk) disable iff (!rst_n)
-        rvalid && !rready |=> ($stable(rdata) && $stable(rresp)) || rready;
+        rvalid && !rready |=> $stable(rdata) && $stable(rresp);
     endproperty
     assert property (p_r_payload_stable)
         else $error("%s: R payload changed while RVALID high, RREADY low", LABEL);
