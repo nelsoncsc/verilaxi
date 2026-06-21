@@ -75,30 +75,14 @@ cd verilaxi
 
 ### Requirements
 
-- Verilator 5.046
-- Yosys 0.63
+- Verilator 5.048
+- Yosys 0.66
 - SystemVerilog support enabled
 - Surfer (recommended) or GTKWave for FST viewing
 
-This repository is validated against `Verilator 5.046` and `Yosys 0.63`. Older packaged `5.x` Verilator releases may fail to parse or build parts of the testbench and should not be assumed to work. Older Yosys releases such as `0.33` may also fail on some of the newer SystemVerilog syntax used by modules like `snix_axis_arbiter`.
+This repository is validated against `Verilator 5.048` and `Yosys 0.66`. Older packaged `5.x` Verilator releases may fail to parse or build parts of the testbench and should not be assumed to work. Older Yosys releases such as `0.33` may also fail on some of the newer SystemVerilog syntax used by modules like `snix_axis_arbiter`.
 
----
-### 🧪 Example: AXI Write / Read
-
-```systemverilog
-logic [31:0] wr_data[];
-logic [31:0] rd_data[];
-
-wr_data = new[4];
-rd_data = new[4];
-
-wr_data[0] = 32'h1111_0001;
-wr_data[1] = 32'h2222_0002;
-wr_data[2] = 32'h3333_0003;
-wr_data[3] = 32'h4444_0004;
-
-driver.write_read_check(32'h100, wr_data, rd_data, 4);
-```
+The protocol checkers use strict AXI stability properties. Once `VALID` is observed while `READY` is low, `VALID` and its payload must remain unchanged through the next sampling edge. Earlier Verilator 5.046 testing used `$fell(ready)` antecedent guards and `|| ready` consequent escapes as scheduling workarounds. With race-free BFM edge timing, Verilator 5.048 passes the strict properties without those guards.
 
 ### Build and Run
 
@@ -185,7 +169,7 @@ Simulation logs and FST waveforms are written with parameter-aware filenames so 
 
 ## Docker
 
-A minimal Docker environment is included for reproducible Linux runs with `Verilator 5.046`, `Yosys 0.63`, and `make`.
+A minimal Docker environment is included for reproducible Linux runs with `Verilator 5.048`, `Yosys 0.66`, and `make`.
 
 ```bash
 docker build -t verilaxi .

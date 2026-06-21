@@ -583,7 +583,7 @@ When TLAST arrives at input beat P (0-based):
 
 These are pre-computed at elaboration time using a `generate` loop indexed by the `IN_RATIO` possible values of `in_phase`, so the synthesised hardware is a small MUX — not a divider.
 
-**Synthesis note** — On Yosys 0.63, the `gcd_fn` function uses `gcd_fn = a` instead of `return a` and an `if (b != 0)` conditional body instead of `break`, for compatibility. The TLAST LUT uses a `generate for` loop with localparam arithmetic so all division/modulo is resolved at elaboration time (avoids the ~10 000-cell Artix-7 explosion that results from synthesising a 32-bit hardware divider).
+**Synthesis note** — On Yosys 0.66, the `gcd_fn` function uses `gcd_fn = a` instead of `return a` and an `if (b != 0)` conditional body instead of `break`, for compatibility. The TLAST LUT uses a `generate for` loop with localparam arithmetic so all division/modulo is resolved at elaboration time (avoids the ~10 000-cell Artix-7 explosion that results from synthesising a 32-bit hardware divider).
 
 **Verification** — `test_axis_rr_converter.sv` uses IN=16, OUT=24. Exercises packets of 3, 1, 2, 6 input beats; checks 18 output beats, 8 packets, and TKEEP `111 / 011 / 001 / 111` per packet (×2 phases).
 
@@ -1210,7 +1210,7 @@ The `axil_lock` semaphore serialises AXI-Lite register accesses.
 
 ### 7.1 Prerequisites
 
-- **Verilator** `5.046` with coroutine support (`-CFLAGS "-fcoroutines"` is required)
+- **Verilator** `5.048` with coroutine support (`-CFLAGS "-fcoroutines"` is required)
 - **C++17** compiler (GCC or Clang)
 - **GTKWave** or **Surfer** (optional, for waveform viewing)
 - **Make**
@@ -1229,11 +1229,11 @@ Verify your Verilator version:
 verilator --version
 ```
 
-This repository is validated against `Verilator 5.046` and `Yosys 0.63`. Older packaged `5.x` Verilator releases may fail to parse or build parts of the testbench and should not be assumed to work. Older Yosys releases such as `0.33` may also fail on newer SystemVerilog syntax used by blocks like `snix_axis_arbiter`.
+This repository is validated against `Verilator 5.048` and `Yosys 0.66`. Older packaged `5.x` Verilator releases may fail to parse or build parts of the testbench and should not be assumed to work. Older Yosys releases such as `0.33` may also fail on newer SystemVerilog syntax used by blocks like `snix_axis_arbiter`.
 
 ### Docker Workflow
 
-A `Dockerfile` is included for a reproducible Ubuntu-based environment with `Verilator 5.046`, `Yosys 0.63`, and the build dependencies needed by this repo.
+A `Dockerfile` is included for a reproducible Ubuntu-based environment with `Verilator 5.048`, `Yosys 0.66`, and the build dependencies needed by this repo.
 
 Build the image:
 
@@ -1548,41 +1548,39 @@ Four Verilator-compatible checker modules live in `tb/assertions/`. Each is inst
 
 **Enabling assertions**
 
-Assertions are activated by the Verilator `--assert` flag, which is already present in `mk/config.mk`:
+Assertions are activated by the Verilator `--assert` flag, which is already present in `mk/build.mk`:
 
 ```makefile
-VERILATOR_FLAGS += --assert
+verilator -Wall --assert \
 ```
 
 Without `--assert`, all `assert property` and `cover property` statements are silently ignored.
 
-**Verilator SVA post-NBA sampling caveat**
+**Strict VALID and payload stability**
 
-Verilator evaluates `assert property` consequents in the post-NBA region — after `always_ff` updates have settled. This means the checker sees signal values that have already been updated by the current clock edge, not the pre-edge (preponed) values mandated by the SV specification.
+Concurrent assertions sample clocked expressions according to SystemVerilog event-region semantics. If `VALID && !READY` is sampled on one edge, the transfer has not completed. The source must therefore keep `VALID` asserted and hold every payload signal stable through the following edge, even if `READY` becomes high on that following edge.
 
-Two post-NBA artefacts affect VALID/READY stability checks:
+The original Verilator 5.046 environment used `$fell(ready)` antecedent guards and `|| ready` consequent escapes to work around observed coroutine and active-edge scheduling behaviour. Those guards also weaken the AXI rule. After moving the BFMs to race-free edge timing, Verilator 5.048 runs the strict properties without the 5.046 workarounds.
 
-1. **Consequent escape (`|| tready`)** — A valid-stability property written as `VALID && !READY |=> VALID` fires a false positive at the handshake cycle. When `READY` goes high, the DUT correctly deasserts `VALID` at the same posedge; the post-NBA check sees `VALID=0` and reports a violation. Adding `|| tready` to the consequent suppresses this: the property passes if `READY` is high at the next cycle (indicating the handshake completed).
+The checkers intentionally do not use `$fell(ready)` antecedent guards or `|| ready` consequent escapes. Those expressions can hide a genuine violation by permitting the source to withdraw `VALID` or change the payload on the very edge where a stalled transfer is finally accepted.
 
-2. **Antecedent guard (`!$fell(tready)`)** — When a handshake writes the last free slot in a FIFO, `fifo_full` goes high in the NBA region, dropping `tready` from 1 to 0 at the same posedge. The SVA checker (post-NBA) sees `tvalid=1, tready=0` even though the handshake completed in the active region. If the master legally deasserts `tvalid` next cycle, the naive antecedent would still match. Adding `!$fell(tready)` excludes this single cycle: a 1-to-0 transition on `tready` implies the FIFO was not-full last cycle, so `wr_en` could have been 1 in the active region (valid handshake). The stability check only fires when `tready` has been continuously low.
-
-All properties in the three checkers combine both patterns:
+The strict property form is:
 
 ```systemverilog
-// Valid stability — skip the $fell(tready) cycle, allow deassert at handshake
+// VALID remains asserted after a sampled stall
 property p_tvalid_stable;
     @(posedge clk) disable iff (!rst_n)
-    tvalid && !tready && !$fell(tready) |=> tvalid || tready;
+    tvalid && !tready |=> tvalid;
 endproperty
 
-// Payload stability — same guards
+// Payload remains unchanged through the eventual handshake edge
 property p_tdata_stable;
     @(posedge clk) disable iff (!rst_n)
-    tvalid && !tready && !$fell(tready) |=> $stable(tdata) || tready;
+    tvalid && !tready |=> $stable(tdata);
 endproperty
 ```
 
-A spurious deassert — `tvalid=0` while `tready=0` on a cycle where `tready` was already low — is still caught.
+Testbench drivers avoid clock-edge races by driving source and sink controls away from the active sampling edge and counting transfers only when `VALID && READY` is observed at the clock edge. The full simulation sweep is run with these strict properties enabled.
 
 ---
 
