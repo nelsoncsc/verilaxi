@@ -7,17 +7,20 @@ class axis_source #(int DATA_WIDTH = 8,
     virtual axis_if.src vif;
     bit backpressure = 0;
     int p_valid = 80;
-    int seed = 32'h1bad_f00d;
+    int seed    = 32'h1bad_f00d;
+    int bp_seed = 32'hdeadbeef;
 
     function new(virtual axis_if.src axis_vif);
-        this.vif = axis_vif;
+        this.vif  = axis_vif;
+        this.seed    = $urandom();
+        this.bp_seed = $urandom();
     endfunction: new
 
     function automatic logic [DATA_WIDTH-1:0] gen_rand_data();
         logic [DATA_WIDTH-1:0] value;
-
-        for (int i = 0; i < DATA_WIDTH; i++) begin
-            value[i] = $urandom(seed)[0];
+        for (int i = 0; i < (DATA_WIDTH + 7) / 8; i++) begin
+            value[i*8 +: 8] = $urandom(seed);
+            seed = seed * 32'h6c62272e ^ 32'hdc4a8873;
         end
         return value;
     endfunction: gen_rand_data
@@ -45,7 +48,7 @@ class axis_source #(int DATA_WIDTH = 8,
                 bit launch_now;
 
                 launch_now = !backpressure ? 1'b1
-                                           : (($urandom(seed) % 100) < p_valid);
+                                           : (($urandom(bp_seed) % 100) < p_valid);
 
                 @(negedge vif.ACLK);
                 if (launch_now) begin
