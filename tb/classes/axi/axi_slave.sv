@@ -188,7 +188,11 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     vif.arready <= 0;
                 end
 
-                if (!rd_active && (rd_addr_q.size() > 0)) begin
+                // Start a queued read only after the R channel is idle.  If a
+                // new burst is popped in the same cycle that the previous
+                // RLAST handshake is still visible, the stale handshake can
+                // incorrectly advance the new burst and skip its first beat.
+                if (!rd_active && !vif.rvalid && (rd_addr_q.size() > 0)) begin
                     rd_addr       = rd_addr_q.pop_front();
                     rd_beats_left = rd_beats_q.pop_front();
                     rd_size       = rd_size_q.pop_front();

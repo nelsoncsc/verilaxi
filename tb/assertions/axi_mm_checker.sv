@@ -25,6 +25,7 @@ module axi_mm_checker #(
     parameter int    ADDR_WIDTH = 32,
     parameter int    DATA_WIDTH = 64,
     parameter int    ID_WIDTH   = 4,
+    parameter bit    ALLOW_ERROR_RESP = 1'b0,
     parameter string LABEL      = "AXI_MM"
 ) (
     input logic clk,
@@ -135,7 +136,7 @@ module axi_mm_checker #(
         if (rst_n) begin
             assert (!$isunknown(bvalid))
                 else $error("%s: BVALID is X/Z", LABEL);
-            if (bvalid)
+            if (bvalid && !ALLOW_ERROR_RESP)
                 assert (bresp inside {2'b00, 2'b01})
                     else $error("%s: Error BRESP=0b%0b (SLVERR/DECERR)", LABEL, bresp);
         end
@@ -189,7 +190,7 @@ module axi_mm_checker #(
             if (rvalid) begin
                 assert (!$isunknown(rdata))
                     else $error("%s: RDATA contains X/Z when RVALID high", LABEL);
-                assert (rresp inside {2'b00, 2'b01})
+                assert (ALLOW_ERROR_RESP || (rresp inside {2'b00, 2'b01}))
                     else $error("%s: Error RRESP=0b%0b (SLVERR/DECERR)", LABEL, rresp);
             end
         end

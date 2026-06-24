@@ -1,6 +1,10 @@
 module snix_axi_dma_csr   #(parameter DATA_WIDTH = 32,
                             parameter ADDR_WIDTH = 4,
-                            parameter NUM_REGS   = 16)
+                            parameter NUM_REGS   = 16,
+                            parameter int PULSE_REG0_INDEX = -1,
+                            parameter logic [DATA_WIDTH-1:0] PULSE_REG0_MASK = '0,
+                            parameter int PULSE_REG1_INDEX = -1,
+                            parameter logic [DATA_WIDTH-1:0] PULSE_REG1_MASK = '0)
                            (input  logic                                clk,
                             input  logic                                rst_n,
                                 
@@ -225,6 +229,14 @@ module snix_axi_dma_csr   #(parameter DATA_WIDTH = 32,
             if(ctrl_rd_stop) begin
                 config_status_reg[RD_CTRL_IDX][1] <= 1'b0;
             end
+            if (PULSE_REG0_INDEX >= 0) begin
+                config_status_reg[PULSE_REG0_INDEX] <=
+                    config_status_reg[PULSE_REG0_INDEX] & ~PULSE_REG0_MASK;
+            end
+            if (PULSE_REG1_INDEX >= 0) begin
+                config_status_reg[PULSE_REG1_INDEX] <=
+                    config_status_reg[PULSE_REG1_INDEX] & ~PULSE_REG1_MASK;
+            end
 
             // set read-only registers to DMA status signals
             // Latch DONE bits (sticky)
@@ -240,7 +252,11 @@ module snix_axi_dma_csr   #(parameter DATA_WIDTH = 32,
             s_axil_rdata <= '0;
         end
         else if(s_axil_read_ready && araddr_index < NUM_REGS) begin
-           s_axil_rdata  <= config_status_reg[araddr_index]; 
+           if (araddr_index == STATUS_IDX)
+               s_axil_rdata <= config_status_reg[STATUS_IDX] |
+                               read_status_reg;
+           else
+               s_axil_rdata <= config_status_reg[araddr_index];
         end
 
 
