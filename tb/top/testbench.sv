@@ -49,6 +49,10 @@ module testbench;
         test_cdma test_cdma_u0 (.clk   (clk),
                                 .rst_n (rst_n)
                                );
+    `elsif USE_VDMA_TEST
+        test_vdma test_vdma_u0 (.clk   (clk),
+                                .rst_n (rst_n)
+                               );
     `elsif USE_AXIS_AFIFO
         test_axis_afifo test_axis_afifo_u0 (.clk   (clk),
                                             .rst_n (rst_n)
@@ -85,6 +89,30 @@ module testbench;
         test_axis_rr_downsizer test_axis_rr_downsizer_u0 (.clk   (clk),
                                                            .rst_n (rst_n)
                                                           );
+    `elsif USE_VIDEO_AXIS_LOOPBACK
+        test_video_axis_loopback test_video_axis_loopback_u0 (.clk   (clk),
+                                                              .rst_n (rst_n)
+                                                             );
+    `elsif USE_VIDEO_FIFO_LOOPBACK
+        test_video_fifo_loopback test_video_fifo_loopback_u0 (.clk   (clk),
+                                                              .rst_n (rst_n)
+                                                             );
+    `elsif USE_VIDEO_AFIFO_LOOPBACK
+        test_video_afifo_loopback test_video_afifo_loopback_u0 (.clk   (clk),
+                                                                .rst_n (rst_n)
+                                                               );
+    `elsif USE_VIDEO_ADAPTER_ERRORS
+        test_video_adapter_errors test_video_adapter_errors_u0 (.clk   (clk),
+                                                                .rst_n (rst_n)
+                                                               );
+    `elsif USE_VIDEO_MODE_CLOCKS
+        test_video_mode_clocks test_video_mode_clocks_u0 (.clk   (clk),
+                                                          .rst_n (rst_n)
+                                                         );
+    `elsif USE_VIDEO_RGB_CDC
+        test_video_rgb_cdc test_video_rgb_cdc_u0 (.clk   (clk),
+                                                  .rst_n (rst_n)
+                                                 );
     `else
         initial begin
             $fatal(1, "No test environment selected. Define USE_AXIS_ENV or USE_AXI_ENV.");

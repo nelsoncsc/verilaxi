@@ -2,7 +2,7 @@ menu:
 	@while true; do \
 		echo ""; \
 		echo "======================================"; \
-		echo " Verilator Simulation Menu"; \
+		echo " Verilaxi Simulator Menu"; \
 		echo "======================================"; \
 		echo "Available tests:"; \
 		echo "  1) axis_register"; \
@@ -23,6 +23,13 @@ menu:
 		echo " 16) uart_axil_slave"; \
 		echo " 17) uart_axil_master"; \
 		echo " 18) axil_gpio"; \
+		echo " 19) vdma"; \
+		echo " 20) video_axis_loopback"; \
+		echo " 21) video_fifo_loopback"; \
+		echo " 22) video_afifo_loopback"; \
+		echo " 23) video_adapter_errors"; \
+		echo " 24) video_mode_clocks"; \
+		echo " 25) video_rgb_cdc"; \
 		echo ""; \
 		echo "Commands:"; \
 		echo "  s) synth — synthesize a design with Yosys"; \
@@ -30,7 +37,7 @@ menu:
 		echo "  c) clean all"; \
 		echo "  q) quit"; \
 		echo ""; \
-		echo "Select a test [1-18], command, or q to quit:"; \
+		echo "Select a test [1-25], command, or q to quit:"; \
 		read -r choice; \
 		case "$$choice" in \
 			1) \
@@ -184,6 +191,42 @@ menu:
 			$(MAKE) clean run TESTNAME=axil_gpio; \
 			code=$$?; \
 			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		19) \
+			echo "You selected AXI VDMA test."; \
+			read -p "Enter READY_PROB 0-100 (AXI slave ready probability, default=100): " READY_PROB; \
+			$(MAKE) clean run TESTNAME=vdma READY_PROB=$$READY_PROB; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		20) \
+			echo "You selected VIDEO_AXIS_LOOPBACK test."; \
+			$(MAKE) clean run TESTNAME=video_axis_loopback; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		21) \
+			echo "You selected VIDEO_FIFO_LOOPBACK test."; \
+			$(MAKE) clean run TESTNAME=video_fifo_loopback; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		22) \
+			echo "You selected VIDEO_AFIFO_LOOPBACK test."; \
+			$(MAKE) clean run TESTNAME=video_afifo_loopback; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		23) \
+			echo "You selected VIDEO_ADAPTER_ERRORS test."; \
+			$(MAKE) clean run TESTNAME=video_adapter_errors; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		24) \
+			echo "You selected VIDEO_MODE_CLOCKS test."; \
+			$(MAKE) clean run TESTNAME=video_mode_clocks; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		25) \
+			echo "You selected VIDEO_RGB_CDC test."; \
+			$(MAKE) clean run TESTNAME=video_rgb_cdc; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
 		s|S) \
 				echo "Select design to synthesize:"; \
 				echo "  1) axis_register"; \
@@ -204,8 +247,9 @@ menu:
 				echo " 16) axis_rr_converter (rational ratio, IN=32 OUT=48)"; \
 				echo " 17) axis_rr_upsizer (rational up, IN=16 OUT=24)"; \
 				echo " 18) axis_rr_downsizer (rational down, IN=24 OUT=16)"; \
-				echo " 19) all"; \
-				read -p "Enter choice [1-19]: " schoice; \
+				echo " 19) vdma"; \
+				echo " 20) all"; \
+				read -p "Enter choice [1-20]: " schoice; \
 				echo "Synthesis target:"; \
 				echo "  g) generic  -- technology-independent (default)"; \
 				echo "  a) artix7   -- Xilinx 7-series (LUT6/FDRE/CARRY4 cells)"; \
@@ -233,7 +277,8 @@ menu:
 					16) $(MAKE) synth SYNTH_NAME=axis_rr_converter  SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					17) $(MAKE) synth SYNTH_NAME=axis_rr_upsizer    SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					18) $(MAKE) synth SYNTH_NAME=axis_rr_downsizer  SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					19) $(MAKE) synth-all                           SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					19) $(MAKE) synth SYNTH_NAME=vdma               SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					20) $(MAKE) synth-all                           SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					*) echo "Invalid choice." ;; \
 				esac ;; \
 			h|H) $(MAKE) help ;; \
