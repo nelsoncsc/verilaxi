@@ -12,9 +12,11 @@ For a deeper walkthrough of the architecture, module inventory, register maps, a
 
 - ✅ AXI4, AXI-Lite, and AXI-Stream support
 - ✅ UART core, AXI-Lite GPIO, and UART↔AXI-Lite control-plane blocks
+- ✅ AXI DMA, CDMA, and initial AXI VDMA/video infrastructure
 - ✅ AXI-Stream packet, beat, and weighted round-robin arbitration
 - ✅ AXI-Stream width converters — integer-ratio (k:1 up, 1:k down) and rational-ratio (e.g. 16↔24)
 - ✅ Synchronous and asynchronous AXI-Stream FIFOs
+- ✅ Video timing, RGB24 pack/unpack, video↔AXI-Stream adapters, and video CDC tests
 - ✅ Verilator-first (tested with FST + Surfer)
 - ✅ No UVM, no factory, no phases
 - ✅ Task-based drivers (`write`, `read`, `write_burst`, `read_burst`)
@@ -45,20 +47,21 @@ These **sistenix** posts are the narrative layer for the repository. The intent 
 ```
 verilaxi/
 ├── rtl/
-│   ├── axi/        snix_axi_dma, snix_axi_cdma, snix_axi_mm2mm, mm2s, s2mm
+│   ├── axi/        snix_axi_dma, snix_axi_cdma, snix_axi_vdma, snix_axi_mm2mm, mm2s, s2mm
 │   ├── axil/       snix_axil_register, snix_axil_gpio, snix_uart_axil_slave, snix_uart_axil_master
 │   │               snix_axi_dma_csr, snix_axi_cdma_csr
 │   ├── axis/       snix_axis_arbiter, snix_axis_fifo, snix_axis_afifo, snix_axis_register
 │   │               snix_axis_upsizer, snix_axis_downsizer
 │   │               snix_axis_rr_converter, snix_axis_rr_upsizer, snix_axis_rr_downsizer
+│   ├── video/      timing, pattern, video↔AXIS, RGB24 pack/unpack, capture/display CDC
 │   ├── uart/       snix_uart_lite
 │   └── common/     snix_sync_fifo, snix_async_fifo, snix_register_slice
 ├── tb/
-│   ├── classes/     axi_master, axi_slave, axil_master, axis_source, axis_sink …
+│   ├── classes/     axi_master, axi_slave, axil_master, axis_source, axis_sink, video helpers …
 │   ├── interfaces/  axi4_if, axil_if, axis_if
-│   ├── packages/    axi_pkg, axi_dma_pkg, axi_cdma_pkg
+│   ├── packages/    axi_pkg, axi_dma_pkg, axi_cdma_pkg, axi_vdma_pkg
 │   ├── assertions/  axis_checker, axil_checker, axi_mm_checker, axi_4k_checker
-│   └── tests/       test_dma, test_cdma, test_axil_register, test_axil_gpio, test_axis_*
+│   └── tests/       test_dma, test_cdma, test_vdma, test_video_*, test_axis_*
 ├── filelists/      common.f, tb_top.f
 ├── mk/             config.mk, build.mk, menu.mk, help.mk
 └── Makefile
@@ -96,6 +99,7 @@ make
 ```bash
 make run TESTNAME=dma            # AXI4 DMA (stream → memory, memory → stream)
 make run TESTNAME=cdma           # AXI4 CDMA (memory-to-memory copy)
+make run TESTNAME=vdma READY_PROB=70  # AXI4 video DMA frame-buffer test
 make run TESTNAME=axil_register  # AXI-Lite register
 make run TESTNAME=axil_gpio      # AXI-Lite GPIO with user LEDs, RGB LEDs, and debounced buttons
 make run TESTNAME=uart_lite      # UART core loopback test
@@ -112,6 +116,12 @@ make run TESTNAME=axis_downsizer     # AXI-Stream integer downsizer (IN=32 → O
 make run TESTNAME=axis_rr_converter  # AXI-Stream rational-ratio converter (IN=32 → OUT=48)
 make run TESTNAME=axis_rr_upsizer    # AXI-Stream rational-ratio upsizer   (IN=16 → OUT=24)
 make run TESTNAME=axis_rr_downsizer  # AXI-Stream rational-ratio downsizer  (IN=24 → OUT=16)
+make run TESTNAME=video_axis_loopback     # video timing/pattern → AXIS → video
+make run TESTNAME=video_fifo_loopback     # video loopback through sync FIFO
+make run TESTNAME=video_afifo_loopback    # video loopback through async FIFO/CDC
+make run TESTNAME=video_adapter_errors    # adapter overflow/underflow/framing checks
+make run TESTNAME=video_mode_clocks       # common video mode pixel-clock periods
+make run TESTNAME=video_rgb_cdc           # RGB24 pack/unpack across capture/AXI/display clocks
 ```
 ![Simulation Waveform](docs/axis_fifo.png)
 
@@ -163,6 +173,7 @@ make synth SYNTH_NAME=axis_rr_upsizer     SYNTH_TARGET=artix7
 make synth SYNTH_NAME=axis_rr_downsizer   SYNTH_TARGET=artix7
 make synth SYNTH_NAME=dma                 SYNTH_TARGET=artix7
 make synth SYNTH_NAME=cdma                SYNTH_TARGET=generic
+make synth SYNTH_NAME=vdma                SYNTH_TARGET=generic
 ```
 
 Simulation logs and FST waveforms are written with parameter-aware filenames so sweep runs do not overwrite each other. For example, `make run TESTNAME=axis_afifo FRAME_FIFO=1 TESTTYPE=1 SRC_BP=1 SINK_BP=1` produces `work/logs/axis_afifo_ff1_tt1_src1_sink1.log` and `work/waves/axis_afifo_ff1_tt1_src1_sink1.fst`.
@@ -205,7 +216,7 @@ scripts/sweep.sh synth both
 scripts/sweep.sh all both
 ```
 
-The simulation sweep covers the AXIS register, UART core, AXI-Lite GPIO, UART/AXI-Lite control-plane blocks, arbiter (packet/beat/weighted), FIFO, AFIFO, upsizer, downsizer, rr_converter, rr_upsizer, rr_downsizer matrices, `axil_register`, and DMA/CDMA runs with `READY_PROB=70`. The synthesis sweep covers all supported designs for `generic`, `artix7`, or both.
+The simulation sweep covers the AXIS register, UART core, AXI-Lite GPIO, UART/AXI-Lite control-plane blocks, arbiter (packet/beat/weighted), FIFO, AFIFO, upsizer, downsizer, rr_converter, rr_upsizer, rr_downsizer matrices, standalone video tests, `axil_register`, DMA/CDMA runs with `READY_PROB=70`, and the VDMA frame-buffer test. The synthesis sweep covers all supported designs for `generic`, `artix7`, or both, including VDMA. The current Verilator 5.048/Yosys 0.66 checkpoint is `89/89` simulation cases and `38/38` synthesis cases passing.
 
 ## Acknowledgements
 

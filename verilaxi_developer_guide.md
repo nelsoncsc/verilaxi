@@ -456,7 +456,7 @@ An AXI4-Stream arbiter that supports three closely related policies in the same 
 
 **Background article:** [Synchronous and Asynchronous FIFOs](https://sistenix.com/fifo_cdc.html)
 
-An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent source and sink clocks. Like `snix_axis_fifo`, it transports `tdata`, `tuser`, and `tlast`, but it uses `snix_async_fifo` internally and exposes separate `s_axis_clk` and `m_axis_clk` domains.
+An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent source and sink clocks. It transports `tdata` and `tlast` through `snix_async_fifo` and exposes separate `s_axis_clk` and `m_axis_clk` domains. It does not have a native `tuser` port; wrappers that need sideband metadata, such as video SOF, should pack that metadata into `tdata` before the CDC boundary and unpack it afterward.
 
 ![AXI-Stream Async FIFO](docs/cdc_fifo.svg)
 
@@ -465,7 +465,6 @@ An AXI4-Stream asynchronous FIFO for clock-domain crossing between independent s
 | Parameter    | Default | Description                                                      |
 |--------------|---------|------------------------------------------------------------------|
 | `DATA_WIDTH` | 32      | Bit width of `tdata`                                             |
-| `USER_WIDTH` | 1       | Bit width of `tuser`                                             |
 | `FIFO_DEPTH` | 16      | Number of entries (must be power of 2)                           |
 | `FRAME_FIFO` | 0       | `0` = streaming/cut-through, `1` = frame-aware store-and-forward |
 
@@ -1290,6 +1289,13 @@ The build system is driven by `make`. The `TESTNAME` variable selects which test
 | `uart_axil_slave`       | 16   | `tb/tests/axil/test_uart_axil_slave.sv`          | `snix_uart_axil_slave`           |
 | `uart_axil_master`      | 17   | `tb/tests/axil/test_uart_axil_master.sv`         | `snix_uart_axil_master`          |
 | `axil_gpio`             | 18   | `tb/tests/axil/test_axil_gpio.sv`                | `snix_axil_gpio`                 |
+| `vdma`                  | 19   | `tb/tests/axi/test_vdma.sv`                      | `snix_axi_vdma`                  |
+| `video_axis_loopback`   | 20   | `tb/tests/video/test_video_axis_loopback.sv`     | video↔AXIS adapters              |
+| `video_fifo_loopback`   | 21   | `tb/tests/video/test_video_fifo_loopback.sv`     | video↔AXIS + sync FIFO           |
+| `video_afifo_loopback`  | 22   | `tb/tests/video/test_video_afifo_loopback.sv`    | video↔AXIS + async FIFO/CDC      |
+| `video_adapter_errors`  | 23   | `tb/tests/video/test_video_adapter_errors.sv`    | video adapter error flags        |
+| `video_mode_clocks`     | 24   | `tb/tests/video/test_video_mode_clocks.sv`       | video clock helper/timings       |
+| `video_rgb_cdc`         | 25   | `tb/tests/video/test_video_rgb_cdc.sv`           | RGB24 pack/unpack + CDC wrappers |
 
 **Compile and run a test**
 
@@ -1308,6 +1314,9 @@ make run TESTNAME=axis_arbiter_weighted SRC_BP=1 SINK_BP=1
 
 # Central DMA test (4KB boundary + partial last beat + abort)
 make run TESTNAME=cdma
+
+# Video DMA frame-buffer test
+make run TESTNAME=vdma READY_PROB=70
 
 # AXI-Stream FIFO test
 make run TESTNAME=axis_fifo
@@ -1334,6 +1343,14 @@ make run TESTNAME=axis_downsizer  SRC_BP=1 SINK_BP=1
 make run TESTNAME=axis_rr_converter  SRC_BP=1 SINK_BP=1
 make run TESTNAME=axis_rr_upsizer    SRC_BP=1 SINK_BP=1
 make run TESTNAME=axis_rr_downsizer  SRC_BP=1 SINK_BP=1
+
+# Standalone video infrastructure tests
+make run TESTNAME=video_axis_loopback
+make run TESTNAME=video_fifo_loopback
+make run TESTNAME=video_afifo_loopback
+make run TESTNAME=video_adapter_errors
+make run TESTNAME=video_mode_clocks
+make run TESTNAME=video_rgb_cdc
 
 # Interactive menu
 make
@@ -1368,11 +1385,39 @@ make run TESTNAME=axis_afifo FRAME_FIFO=0 TESTTYPE=2  # Fast-source / slow-sink
 make run TESTNAME=axis_afifo FRAME_FIFO=1 TESTTYPE=1 SRC_BP=1 SINK_BP=1  # Frame mode with backpressure
 ```
 
+**VDMA and video infrastructure tests**
+
+The initial video infrastructure uses small deterministic frames for fast simulation. The default video loopback checks use an 8x4 active frame so pixel order, SOF/EOL/TLAST alignment, CDC behaviour, and backpressure can be verified without simulating full 720p/1080p frame volumes. Larger-frame and asymmetric-rate stress tests are planned as follow-on coverage.
+
+```bash
+# AXI VDMA frame-buffer test with AXI ready backpressure
+make run TESTNAME=vdma READY_PROB=70
+
+# Video timing/pattern through video→AXIS→video
+make run TESTNAME=video_axis_loopback
+
+# Video loopback through synchronous and asynchronous FIFOs
+make run TESTNAME=video_fifo_loopback
+make run TESTNAME=video_afifo_loopback
+
+# Adapter error flags and clock-mode helper checks
+make run TESTNAME=video_adapter_errors
+make run TESTNAME=video_mode_clocks
+
+# RGB24 pack/unpack across capture, AXI, and display clock domains
+make run TESTNAME=video_rgb_cdc
+```
+
+The async video paths preserve SOF metadata by packing `tuser` into the FIFO data word when crossing through the base `snix_axis_afifo`, which carries `tdata` and `tlast`.
+
+At the current Verilator 5.048/Yosys 0.66 checkpoint, the regression result is `89/89` simulation cases and `38/38` synthesis cases passing. Remaining VDMA production work includes longer asymmetric-rate stress tests, underrun/overwrite/sync-loss counter coverage, cleaner dedicated IRQ acknowledgement, richer AXI fault/status reporting, and larger-frame stress beyond the tiny controlled frames.
+
 For synthesis, `axis_afifo` is also available through the Makefile flow:
 
 ```bash
 make synth SYNTH_NAME=axis_afifo     SYNTH_TARGET=generic
 make synth SYNTH_NAME=axis_afifo_pkt SYNTH_TARGET=artix7
+make synth SYNTH_NAME=vdma           SYNTH_TARGET=generic
 ```
 
 **Width converter synthesis** — all five width converter designs are in `VALID_SYNTHS`:
