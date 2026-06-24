@@ -1,19 +1,32 @@
 `timescale 1ns/1ps
 
 module test_video_rgb_cdc(input logic clk, input logic rst_n);
+`ifdef VIDEO_VALIDATE
+    localparam int WIDTH = 32;
+    localparam int HEIGHT = 16;
+`else
     localparam int WIDTH = 8;
     localparam int HEIGHT = 4;
+`endif
     localparam int DATA_WIDTH = 64;
+    localparam int CDC_FIFO_DEPTH = (WIDTH <= 8) ? 64 : 256;
 
     logic capture_clk;
     logic axi_clk;
     logic display_clk;
-    initial capture_clk = 1'b0;
-    initial axi_clk = 1'b0;
-    initial display_clk = 1'b0;
-    always #3 capture_clk = ~capture_clk;
-    always #2 axi_clk = ~axi_clk;
-    always #5 display_clk = ~display_clk;
+    initial begin
+        capture_clk = 1'b0;
+        forever #3 capture_clk = ~capture_clk;
+    end
+    initial begin
+        axi_clk = 1'b0;
+        forever #2 axi_clk = ~axi_clk;
+    end
+    initial begin
+        display_clk = 1'b0;
+        #1;
+        forever #3 display_clk = ~display_clk;
+    end
 
     logic capture_rst_n = 1'b0;
     logic axi_rst_n = 1'b0;
@@ -30,7 +43,7 @@ module test_video_rgb_cdc(input logic clk, input logic rst_n);
         pixel = {8'(frame), 8'(row), 8'(col)};
     endfunction
 
-    snix_video_capture_cdc #(.DATA_WIDTH(DATA_WIDTH), .FIFO_DEPTH(32)) u_capture (
+    snix_video_capture_cdc #(.DATA_WIDTH(DATA_WIDTH), .FIFO_DEPTH(CDC_FIFO_DEPTH)) u_capture (
         .capture_clk, .capture_rst_n,
         .s_axis_tdata(in_data), .s_axis_tuser(in_user),
         .s_axis_tvalid(in_valid), .s_axis_tready(in_ready), .s_axis_tlast(in_last),
@@ -40,7 +53,7 @@ module test_video_rgb_cdc(input logic clk, input logic rst_n);
         .m_axis_tready(packed_ready), .m_axis_tlast(packed_last)
     );
 
-    snix_video_display_cdc #(.DATA_WIDTH(DATA_WIDTH), .FIFO_DEPTH(32)) u_display (
+    snix_video_display_cdc #(.DATA_WIDTH(DATA_WIDTH), .FIFO_DEPTH(CDC_FIFO_DEPTH)) u_display (
         .axi_clk, .axi_rst_n,
         .s_axis_tdata(packed_data), .s_axis_tkeep(packed_keep),
         .s_axis_tuser(packed_user), .s_axis_tvalid(packed_valid),
@@ -111,11 +124,16 @@ module test_video_rgb_cdc(input logic clk, input logic rst_n);
             send_frames();
             receive_frames();
         join
-        $display("[VIDEO RGB CDC] two packed 8x4 RGB24 frames passed across 3 clocks");
+        $display("[VIDEO RGB CDC] two packed %0dx%0d RGB24 frames passed across 3 clocks",
+                 WIDTH, HEIGHT);
         $finish;
     end
 
+`ifdef VIDEO_VALIDATE
+    initial #500_000 $fatal(1, "video RGB CDC timeout");
+`else
     initial #50_000 $fatal(1, "video RGB CDC timeout");
+`endif
 
     logic unused;
     assign unused = clk ^ rst_n;

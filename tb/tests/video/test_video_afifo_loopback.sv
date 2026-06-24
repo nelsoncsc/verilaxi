@@ -6,22 +6,34 @@ module test_video_afifo_loopback (
 );
 
     localparam snix_video_pkg::video_timing_t TIMING =
+`ifdef VIDEO_VALIDATE
+        snix_video_pkg::TEST_32x16;
+`else
         snix_video_pkg::TEST_8x4;
+`endif
     localparam int H_TOTAL = TIMING.h_active + TIMING.h_front_porch +
                              TIMING.h_sync_pulse + TIMING.h_back_porch;
     localparam int V_TOTAL = TIMING.v_active + TIMING.v_front_porch +
                              TIMING.v_sync_pulse + TIMING.v_back_porch;
-    // Large enough for the tiny 8x4 verification frame. A production VDMA
-    // normally buffers only a few lines here; full frames reside in memory.
-    localparam int FIFO_DEPTH = 64;
+    localparam int PREFILL_LINES = 2;
+    // Keep the async/local elastic storage to a few video lines. Use a
+    // power-of-two depth for the async FIFO pointer implementation.
+    localparam int FIFO_DEPTH = (TIMING.h_active <= 8) ? 64 : 256;
 
-    // Deliberately unrelated clocks: capture is 6 ns, display is 4 ns.
+    // Independent same-rate pixel clocks with a phase offset. A few-line FIFO
+    // can absorb phase/CDC elasticity; sustained frame-rate conversion belongs
+    // in VDMA/external memory.
     logic capture_clk;
     logic display_clk;
-    initial capture_clk = 1'b0;
-    initial display_clk = 1'b0;
-    always #3 capture_clk = ~capture_clk;
-    always #2 display_clk = ~display_clk;
+    initial begin
+        capture_clk = 1'b0;
+        forever #3 capture_clk = ~capture_clk;
+    end
+    initial begin
+        display_clk = 1'b0;
+        #1;
+        forever #3 display_clk = ~display_clk;
+    end
 
     logic capture_rst_n, afifo_display_rst_n, display_rst_n;
     logic prefill_done;
@@ -67,9 +79,8 @@ module test_video_afifo_loopback (
         repeat (4) @(posedge capture_clk);
         capture_rst_n = 1'b1;
 
-        // Prefill one tiny test frame before enabling the read clock domain.
-        // This deterministic startup technique is not a full-frame hardware
-        // buffering recommendation for production resolutions.
+        // Prefill only a couple of active lines before enabling the read
+        // clock domain. This models line elasticity, not full-frame storage.
         wait (prefill_done);
         repeat (2) @(posedge display_clk);
         afifo_display_rst_n = 1'b1;
@@ -172,7 +183,7 @@ module test_video_afifo_loopback (
             prefill_done <= 1'b0;
         else begin
             if (!prefill_done && src_de && src_eol &&
-                (int'(src_y) == TIMING.v_active - 1))
+                (int'(src_y) == PREFILL_LINES - 1))
                 prefill_done <= 1'b1;
 
             if (src_de)
@@ -195,7 +206,7 @@ module test_video_afifo_loopback (
 
             if (dst_eol && int'(dst_y) == TIMING.v_active - 1) begin
                 frames_done <= frames_done + 1;
-                $display("[VIDEO AFIFO] frame %0d passed (capture=6ns display=4ns)",
+                $display("[VIDEO AFIFO] frame %0d passed (same-rate phase-shifted clocks)",
                          frames_done + 1);
             end
         end
@@ -211,7 +222,11 @@ module test_video_afifo_loopback (
     end
 
     initial begin
+`ifdef VIDEO_VALIDATE
+        #200_000 $fatal(1, "video AFIFO loopback timeout");
+`else
         #20_000 $fatal(1, "video AFIFO loopback timeout");
+`endif
     end
 
 endmodule : test_video_afifo_loopback

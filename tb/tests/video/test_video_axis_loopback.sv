@@ -6,7 +6,11 @@ module test_video_axis_loopback (
 );
 
     localparam snix_video_pkg::video_timing_t TIMING =
+`ifdef VIDEO_VALIDATE
+        snix_video_pkg::TEST_64x32;
+`else
         snix_video_pkg::TEST_8x4;
+`endif
     localparam int H_TOTAL = TIMING.h_active + TIMING.h_front_porch +
                              TIMING.h_sync_pulse + TIMING.h_back_porch;
     localparam int V_TOTAL = TIMING.v_active + TIMING.v_front_porch +
@@ -163,7 +167,11 @@ module test_video_axis_loopback (
     end
 
     initial begin
-        #5000 $fatal(1, "video loopback timeout");
+`ifdef VIDEO_VALIDATE
+        #100_000 $fatal(1, "video loopback timeout");
+`else
+        #5_000 $fatal(1, "video loopback timeout");
+`endif
     end
 
 endmodule : test_video_axis_loopback

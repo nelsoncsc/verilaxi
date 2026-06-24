@@ -6,14 +6,18 @@ module test_video_fifo_loopback (
 );
 
     localparam snix_video_pkg::video_timing_t TIMING =
+`ifdef VIDEO_VALIDATE
+        snix_video_pkg::TEST_32x16;
+`else
         snix_video_pkg::TEST_8x4;
+`endif
     localparam int H_TOTAL = TIMING.h_active + TIMING.h_front_porch +
                              TIMING.h_sync_pulse + TIMING.h_back_porch;
     localparam int V_TOTAL = TIMING.v_active + TIMING.v_front_porch +
                              TIMING.v_sync_pulse + TIMING.v_back_porch;
-    // Large enough for the tiny 8x4 verification frame. Real video datapaths
-    // generally use a few lines of elastic storage rather than a frame FIFO.
-    localparam int FIFO_DEPTH = 64;
+    localparam int PREFILL_LINES = 2;
+    // Power-of-two depth: enough for several active lines, not a full frame.
+    localparam int FIFO_DEPTH = (TIMING.h_active <= 8) ? 64 : 256;
 
     logic src_hsync, src_vsync, src_de, src_sof, src_eol;
     logic [$clog2(H_TOTAL)-1:0] src_x;
@@ -82,10 +86,9 @@ module test_video_fifo_loopback (
         .m_axis_tready(out_tready)
     );
 
-    // Hold the display side off until one tiny active test frame is buffered.
-    // This is deliberate downstream backpressure; the FIFO must hide it from
-    // the non-stallable native-video source. Production VDMA stores full
-    // frames in external memory and sizes this FIFO in lines.
+    // Hold the display side off only long enough to prefill a couple of active
+    // video lines. This models realistic line elasticity; full-frame buffering
+    // belongs in VDMA/external memory, not this local FIFO.
     assign display_rst_n = rst_n && display_enable;
 
     snix_video_timing_gen #(.TIMING(TIMING)) u_dst_timing (
@@ -124,7 +127,7 @@ module test_video_fifo_loopback (
             frames_done    <= 0;
         end else begin
             if (!display_enable && src_de && src_eol &&
-                (int'(src_y) == TIMING.v_active - 1))
+                (int'(src_y) == PREFILL_LINES - 1))
                 display_enable <= 1'b1;
 
             if (src_de)
@@ -160,7 +163,11 @@ module test_video_fifo_loopback (
     end
 
     initial begin
+`ifdef VIDEO_VALIDATE
+        #100_000 $fatal(1, "video FIFO loopback timeout");
+`else
         #10_000 $fatal(1, "video FIFO loopback timeout");
+`endif
     end
 
 endmodule : test_video_fifo_loopback

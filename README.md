@@ -100,6 +100,7 @@ make
 make run TESTNAME=dma            # AXI4 DMA (stream → memory, memory → stream)
 make run TESTNAME=cdma           # AXI4 CDMA (memory-to-memory copy)
 make run TESTNAME=vdma READY_PROB=70  # AXI4 video DMA frame-buffer test
+scripts/vdma_validate.sh         # Larger-frame VDMA validation at READY_PROB=100/70/50/30
 make run TESTNAME=axil_register  # AXI-Lite register
 make run TESTNAME=axil_gpio      # AXI-Lite GPIO with user LEDs, RGB LEDs, and debounced buttons
 make run TESTNAME=uart_lite      # UART core loopback test
