@@ -1393,6 +1393,9 @@ The initial video infrastructure uses small deterministic frames for fast simula
 # AXI VDMA frame-buffer test with AXI ready backpressure
 make run TESTNAME=vdma READY_PROB=70
 
+# Larger 64x32 VDMA validation profile across READY_PROB=100/70/50/30
+scripts/vdma_validate.sh
+
 # Video timing/pattern through video→AXIS→video
 make run TESTNAME=video_axis_loopback
 
@@ -1407,6 +1410,8 @@ make run TESTNAME=video_mode_clocks
 # RGB24 pack/unpack across capture, AXI, and display clock domains
 make run TESTNAME=video_rgb_cdc
 ```
+
+The VDMA validation profile enables `VDMA_VALIDATE=1`, which adds a 64x32 frame pass after the default 8x4, 32x12, partial-beat, frame-store, telemetry, and fault checks. The helper prints a compact throughput summary for S2MM/MM2S and keeps full per-case make logs under `work/logs/`.
 
 The async video paths preserve SOF metadata by packing `tuser` into the FIFO data word when crossing through the base `snix_axis_afifo`, which carries `tdata` and `tlast`.
 
