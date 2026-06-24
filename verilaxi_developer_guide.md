@@ -1387,7 +1387,7 @@ make run TESTNAME=axis_afifo FRAME_FIFO=1 TESTTYPE=1 SRC_BP=1 SINK_BP=1  # Frame
 
 **VDMA and video infrastructure tests**
 
-The initial video infrastructure uses small deterministic frames for fast simulation. The default video loopback checks use an 8x4 active frame so pixel order, SOF/EOL/TLAST alignment, CDC behaviour, and backpressure can be verified without simulating full 720p/1080p frame volumes. Larger-frame and asymmetric-rate stress tests are planned as follow-on coverage.
+The initial video infrastructure uses small deterministic frames for fast simulation. The default video loopback checks use an 8x4 active frame so pixel order, SOF/EOL/TLAST alignment, CDC behaviour, and backpressure can be verified without simulating full 720p/1080p frame volumes. The VDMA test also includes a medium 32x12 asymmetric stress section with source stalls, sink stalls, AXI ready backpressure, and poisoned stride padding checks.
 
 ```bash
 # AXI VDMA frame-buffer test with AXI ready backpressure
@@ -1410,7 +1410,7 @@ make run TESTNAME=video_rgb_cdc
 
 The async video paths preserve SOF metadata by packing `tuser` into the FIFO data word when crossing through the base `snix_axis_afifo`, which carries `tdata` and `tlast`.
 
-At the current Verilator 5.048/Yosys 0.66 checkpoint, the regression result is `89/89` simulation cases and `38/38` synthesis cases passing. Remaining VDMA production work includes longer asymmetric-rate stress tests, underrun/overwrite/sync-loss counter coverage, cleaner dedicated IRQ acknowledgement, richer AXI fault/status reporting, and larger-frame stress beyond the tiny controlled frames.
+At the current Verilator 5.048/Yosys 0.66 checkpoint, the regression result is `89/89` simulation cases and `38/38` synthesis cases passing. Remaining VDMA production work includes longer-running asymmetric-rate stress tests, cleaner dedicated IRQ acknowledgement, richer AXI fault/status reporting, DDR-backed board integration, and larger-frame stress beyond the controlled simulation frames.
 
 For synthesis, `axis_afifo` is also available through the Makefile flow:
 

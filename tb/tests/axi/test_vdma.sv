@@ -23,6 +23,12 @@ module test_vdma #(
     localparam int THR_BASE_ADDR = 32'h0000_2000;
     localparam int THR_HSIZE_BYTES = THR_WIDTH_PIXELS * BYTES_PER_PIXEL;
     localparam int THR_STRIDE_BYTES = 256;
+    localparam int STRESS_WIDTH_PIXELS = 32;
+    localparam int STRESS_HEIGHT_LINES = 12;
+    localparam int STRESS_BASE_ADDR = 32'h0000_4000;
+    localparam int STRESS_HSIZE_BYTES = STRESS_WIDTH_PIXELS * BYTES_PER_PIXEL;
+    localparam int STRESS_STRIDE_BYTES = 512;
+    localparam logic [DATA_WIDTH-1:0] STRESS_SENTINEL = 64'hdeca_fbad_cafe_f00d;
     localparam int MEM_DEPTH = 4096;
     localparam int AXIL_ADDR_WIDTH = 32;
     localparam int AXIL_DATA_WIDTH = 32;
@@ -48,6 +54,7 @@ module test_vdma #(
     logic [31:0] vdma_status;
     logic [1:0] write_slot, read_slot, newest_complete_slot;
     logic [2:0] valid_slots;
+    int ready_prob_cfg;
 
     axi_slave #(
         .ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH),
@@ -72,6 +79,22 @@ module test_vdma #(
 
     function automatic logic [DATA_WIDTH-1:0] partial_word(input int beat);
         return 64'hf8f7_f6f5_f4f3_f2f1 + DATA_WIDTH'(beat * 64'h0808_0808_0808_0808);
+    endfunction
+
+    function automatic int s2mm_min_throughput_pct(input int ready_prob);
+        if (ready_prob >= 70)
+            return 90;
+        if (ready_prob >= 50)
+            return 85;
+        return ready_prob + 20;
+    endfunction
+
+    function automatic int mm2s_min_throughput_pct(input int ready_prob);
+        if (ready_prob >= 70)
+            return 85;
+        if (ready_prob >= 50)
+            return 75;
+        return ready_prob + 20;
     endfunction
 
     snix_axi_vdma #(
@@ -441,6 +464,131 @@ module test_vdma #(
         playback_axis.tready = 1'b0;
     endtask
 
+    task automatic poison_frame_region(
+        input int base_addr,
+        input int stride_bytes,
+        input int height_lines
+    );
+        int stride_words;
+        int base_word;
+
+        stride_words = stride_bytes / BYTES_PER_PIXEL;
+        base_word    = base_addr / BYTES_PER_PIXEL;
+        for (int row = 0; row < height_lines; row++) begin
+            for (int word = 0; word < stride_words; word++)
+                mem_slave.mem[base_word + row * stride_words + word] = STRESS_SENTINEL;
+        end
+    endtask
+
+    task automatic check_stride_padding(
+        input int base_addr,
+        input int width_pixels,
+        input int stride_bytes,
+        input int height_lines
+    );
+        int stride_words;
+        int base_word;
+
+        stride_words = stride_bytes / BYTES_PER_PIXEL;
+        base_word    = base_addr / BYTES_PER_PIXEL;
+        for (int row = 0; row < height_lines; row++) begin
+            for (int word = width_pixels; word < stride_words; word++) begin
+                assert (mem_slave.mem[base_word + row * stride_words + word] == STRESS_SENTINEL)
+                    else $fatal(1,
+                        "VDMA stride padding overwritten row=%0d word=%0d got=%h",
+                        row, word,
+                        mem_slave.mem[base_word + row * stride_words + word]);
+            end
+        end
+    endtask
+
+    task automatic send_frame_rect_bp(
+        input  int frame,
+        input  int width_pixels,
+        input  int height_lines,
+        input  int source_gap_mod,
+        output int beats,
+        output int cycles
+    );
+        int sent;
+        int row;
+        int col;
+
+        sent   = 0;
+        beats  = width_pixels * height_lines;
+        cycles = 0;
+        while (sent < beats) begin
+            if ((source_gap_mod > 0) && (((sent + frame) % source_gap_mod) == 0)) begin
+                @(negedge clk);
+                capture_axis.tvalid = 1'b0;
+                capture_axis.tlast  = 1'b0;
+                capture_axis.tuser  = '0;
+                @(posedge clk);
+                cycles++;
+            end
+
+            row = sent / width_pixels;
+            col = sent % width_pixels;
+            @(negedge clk);
+            capture_axis.tdata  = frame_pixel_word(frame, row, col);
+            capture_axis.tkeep  = '1;
+            capture_axis.tuser  = USER_WIDTH'((row == 0) && (col == 0));
+            capture_axis.tlast  = (col == width_pixels - 1);
+            capture_axis.tvalid = 1'b1;
+            @(posedge clk);
+            cycles++;
+            while (!capture_axis.tready) begin
+                @(posedge clk);
+                cycles++;
+            end
+            sent++;
+        end
+        @(negedge clk);
+        capture_axis.tvalid = 1'b0;
+        capture_axis.tlast  = 1'b0;
+        capture_axis.tuser  = '0;
+    endtask
+
+    task automatic receive_frame_rect_bp(
+        input  int frame,
+        input  int width_pixels,
+        input  int height_lines,
+        input  int sink_stall_mod,
+        output int beats,
+        output int cycles
+    );
+        int received;
+        int row;
+        int col;
+
+        received = 0;
+        beats    = width_pixels * height_lines;
+        cycles   = 0;
+        while (received < beats) begin
+            @(negedge clk);
+            playback_axis.tready = (sink_stall_mod <= 0) ||
+                                   (((cycles + frame) % sink_stall_mod) != 0);
+            @(posedge clk);
+            cycles++;
+            if (playback_axis.tvalid && playback_axis.tready) begin
+                row = received / width_pixels;
+                col = received % width_pixels;
+                assert (playback_axis.tdata == frame_pixel_word(frame, row, col))
+                    else $fatal(1,
+                        "VDMA asymmetric playback mismatch frame=%0d row=%0d col=%0d exp=%h got=%h",
+                        frame, row, col, frame_pixel_word(frame, row, col),
+                        playback_axis.tdata);
+                assert (playback_axis.tuser[0] == ((row == 0) && (col == 0)))
+                    else $fatal(1, "VDMA asymmetric SOF mismatch row=%0d col=%0d", row, col);
+                assert (playback_axis.tlast == (col == width_pixels - 1))
+                    else $fatal(1, "VDMA asymmetric EOL mismatch row=%0d col=%0d", row, col);
+                received++;
+            end
+        end
+        @(negedge clk);
+        playback_axis.tready = 1'b0;
+    endtask
+
     initial begin
         capture_axis.tdata  = '0;
         capture_axis.tuser  = '0;
@@ -455,6 +603,8 @@ module test_vdma #(
         axil_m.reset();
         mem_slave = new(axi_mem, "vdma_mem");
         mem_slave.reset();
+        ready_prob_cfg = 100;
+        void'($value$plusargs("READY_PROB=%d", ready_prob_cfg));
         for (int i = 0; i < MEM_DEPTH; i++)
             mem_slave.mem[i] = '0;
 
@@ -739,6 +889,8 @@ module test_vdma #(
         begin
             int wr_beats;
             int wr_cycles;
+            int min_pct;
+            min_pct = s2mm_min_throughput_pct(ready_prob_cfg);
             axil_m.write(VDMA_WR_CTRL,
                          vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
             fork
@@ -747,11 +899,13 @@ module test_vdma #(
                 wait (wr_done);
             join
             assert (!wr_error) else $fatal(1, "VDMA throughput capture failed");
-            assert ((wr_beats * 100 / wr_cycles) >= 90)
-                else $fatal(1, "VDMA S2MM throughput too low: beats=%0d cycles=%0d",
-                            wr_beats, wr_cycles);
-            $display("[VDMA THROUGHPUT] S2MM %0d beats in %0d cycles (%0d%%)",
-                     wr_beats, wr_cycles, wr_beats * 100 / wr_cycles);
+            assert ((wr_beats * 100 / wr_cycles) >= min_pct)
+                else $fatal(1, "VDMA S2MM throughput too low: beats=%0d cycles=%0d pct=%0d min=%0d ready_prob=%0d",
+                            wr_beats, wr_cycles, wr_beats * 100 / wr_cycles,
+                            min_pct, ready_prob_cfg);
+            $display("[VDMA THROUGHPUT] S2MM %0d beats in %0d cycles (%0d%%, min=%0d%%, ready_prob=%0d)",
+                     wr_beats, wr_cycles, wr_beats * 100 / wr_cycles,
+                     min_pct, ready_prob_cfg);
         end
 
         configure_read_custom(THR_BASE_ADDR, THR_STRIDE_BYTES,
@@ -759,6 +913,8 @@ module test_vdma #(
         begin
             int rd_beats;
             int rd_cycles;
+            int min_pct;
+            min_pct = mm2s_min_throughput_pct(ready_prob_cfg);
             axil_m.write(VDMA_RD_CTRL,
                          vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
             fork
@@ -769,10 +925,65 @@ module test_vdma #(
             assert (!rd_error) else $fatal(1, "VDMA throughput playback failed");
             // MM2S keeps several read bursts in flight; allow randomized
             // slave-ready gaps but catch regressions back to per-line bubbles.
-            assert ((rd_beats * 100 / rd_cycles) >= 85)
-                else $fatal(1, "VDMA MM2S throughput too low: beats=%0d cycles=%0d",
-                            rd_beats, rd_cycles);
-            $display("[VDMA THROUGHPUT] MM2S %0d beats in %0d cycles (%0d%%)",
+            assert ((rd_beats * 100 / rd_cycles) >= min_pct)
+                else $fatal(1, "VDMA MM2S throughput too low: beats=%0d cycles=%0d pct=%0d min=%0d ready_prob=%0d",
+                            rd_beats, rd_cycles, rd_beats * 100 / rd_cycles,
+                            min_pct, ready_prob_cfg);
+            $display("[VDMA THROUGHPUT] MM2S %0d beats in %0d cycles (%0d%%, min=%0d%%, ready_prob=%0d)",
+                     rd_beats, rd_cycles, rd_beats * 100 / rd_cycles,
+                     min_pct, ready_prob_cfg);
+        end
+
+        // Medium-frame asymmetric stress: source-side gaps during capture,
+        // sink-side stalls during playback, AXI ready backpressure from the
+        // memory BFM, and poisoned stride padding. This catches geometry
+        // regressions that tiny 8x4 tests can miss without making sweep slow.
+        axil_m.write(VDMA_FRAME_CTRL, 32'h0);
+        configure_write_custom(STRESS_BASE_ADDR, STRESS_STRIDE_BYTES,
+                               STRESS_HSIZE_BYTES, STRESS_HEIGHT_LINES);
+        configure_read_custom(STRESS_BASE_ADDR, STRESS_STRIDE_BYTES,
+                              STRESS_HSIZE_BYTES, STRESS_HEIGHT_LINES);
+        for (int frame = 0; frame < 3; frame++) begin
+            int wr_beats;
+            int wr_cycles;
+            int rd_beats;
+            int rd_cycles;
+            int frame_id;
+
+            frame_id = 60 + frame;
+            poison_frame_region(STRESS_BASE_ADDR, STRESS_STRIDE_BYTES,
+                                STRESS_HEIGHT_LINES);
+
+            axil_m.write(VDMA_WR_CTRL,
+                         vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
+            fork
+                send_frame_rect_bp(frame_id, STRESS_WIDTH_PIXELS,
+                                   STRESS_HEIGHT_LINES, 7,
+                                   wr_beats, wr_cycles);
+                wait (wr_done);
+            join
+            assert (!wr_error)
+                else $fatal(1, "VDMA asymmetric capture failed frame=%0d", frame_id);
+            check_stride_padding(STRESS_BASE_ADDR, STRESS_WIDTH_PIXELS,
+                                 STRESS_STRIDE_BYTES, STRESS_HEIGHT_LINES);
+
+            axil_m.write(VDMA_RD_CTRL,
+                         vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
+            fork
+                receive_frame_rect_bp(frame_id, STRESS_WIDTH_PIXELS,
+                                      STRESS_HEIGHT_LINES, 5,
+                                      rd_beats, rd_cycles);
+                wait (rd_done);
+            join
+            assert (!rd_error)
+                else $fatal(1, "VDMA asymmetric playback failed frame=%0d", frame_id);
+            assert (wr_beats == STRESS_WIDTH_PIXELS * STRESS_HEIGHT_LINES &&
+                    rd_beats == STRESS_WIDTH_PIXELS * STRESS_HEIGHT_LINES)
+                else $fatal(1, "VDMA asymmetric beat accounting mismatch wr=%0d rd=%0d",
+                            wr_beats, rd_beats);
+            $display("[VDMA STRESS] frame=%0d %0dx%0d wr=%0d/%0d %0d%% rd=%0d/%0d %0d%% padding-ok",
+                     frame_id, STRESS_WIDTH_PIXELS, STRESS_HEIGHT_LINES,
+                     wr_beats, wr_cycles, wr_beats * 100 / wr_cycles,
                      rd_beats, rd_cycles, rd_beats * 100 / rd_cycles);
         end
 
