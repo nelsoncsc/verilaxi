@@ -29,7 +29,12 @@ module test_vdma #(
     localparam int STRESS_HSIZE_BYTES = STRESS_WIDTH_PIXELS * BYTES_PER_PIXEL;
     localparam int STRESS_STRIDE_BYTES = 512;
     localparam logic [DATA_WIDTH-1:0] STRESS_SENTINEL = 64'hdeca_fbad_cafe_f00d;
-    localparam int MEM_DEPTH = 4096;
+    localparam int VALID_WIDTH_PIXELS = 64;
+    localparam int VALID_HEIGHT_LINES = 32;
+    localparam int VALID_BASE_ADDR = 32'h0000_8000;
+    localparam int VALID_HSIZE_BYTES = VALID_WIDTH_PIXELS * BYTES_PER_PIXEL;
+    localparam int VALID_STRIDE_BYTES = 1024;
+    localparam int MEM_DEPTH = 16384;
     localparam int AXIL_ADDR_WIDTH = 32;
     localparam int AXIL_DATA_WIDTH = 32;
 
@@ -55,6 +60,7 @@ module test_vdma #(
     logic [1:0] write_slot, read_slot, newest_complete_slot;
     logic [2:0] valid_slots;
     int ready_prob_cfg;
+    int vdma_validate_cfg;
 
     axi_slave #(
         .ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH),
@@ -604,7 +610,9 @@ module test_vdma #(
         mem_slave = new(axi_mem, "vdma_mem");
         mem_slave.reset();
         ready_prob_cfg = 100;
+        vdma_validate_cfg = 0;
         void'($value$plusargs("READY_PROB=%d", ready_prob_cfg));
+        void'($value$plusargs("VDMA_VALIDATE=%d", vdma_validate_cfg));
         for (int i = 0; i < MEM_DEPTH; i++)
             mem_slave.mem[i] = '0;
 
@@ -987,6 +995,60 @@ module test_vdma #(
                      rd_beats, rd_cycles, rd_beats * 100 / rd_cycles);
         end
 
+        // Optional validation profile for pre-architecture confidence. This is
+        // intentionally outside the default sweep so regular regression stays
+        // fast, while `VDMA_VALIDATE=1` exercises a larger frame with the same
+        // geometry and backpressure checks used above.
+        if (vdma_validate_cfg != 0) begin
+            int wr_beats;
+            int wr_cycles;
+            int rd_beats;
+            int rd_cycles;
+            int frame_id;
+
+            frame_id = 90;
+            axil_m.write(VDMA_FRAME_CTRL, 32'h0);
+            configure_write_custom(VALID_BASE_ADDR, VALID_STRIDE_BYTES,
+                                   VALID_HSIZE_BYTES, VALID_HEIGHT_LINES);
+            configure_read_custom(VALID_BASE_ADDR, VALID_STRIDE_BYTES,
+                                  VALID_HSIZE_BYTES, VALID_HEIGHT_LINES);
+            poison_frame_region(VALID_BASE_ADDR, VALID_STRIDE_BYTES,
+                                VALID_HEIGHT_LINES);
+
+            axil_m.write(VDMA_WR_CTRL,
+                         vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
+            fork
+                send_frame_rect_bp(frame_id, VALID_WIDTH_PIXELS,
+                                   VALID_HEIGHT_LINES, 11,
+                                   wr_beats, wr_cycles);
+                wait (wr_done);
+            join
+            assert (!wr_error)
+                else $fatal(1, "VDMA validation capture failed");
+            check_stride_padding(VALID_BASE_ADDR, VALID_WIDTH_PIXELS,
+                                 VALID_STRIDE_BYTES, VALID_HEIGHT_LINES);
+
+            axil_m.write(VDMA_RD_CTRL,
+                         vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
+            fork
+                receive_frame_rect_bp(frame_id, VALID_WIDTH_PIXELS,
+                                      VALID_HEIGHT_LINES, 9,
+                                      rd_beats, rd_cycles);
+                wait (rd_done);
+            join
+            assert (!rd_error)
+                else $fatal(1, "VDMA validation playback failed");
+            assert (wr_beats == VALID_WIDTH_PIXELS * VALID_HEIGHT_LINES &&
+                    rd_beats == VALID_WIDTH_PIXELS * VALID_HEIGHT_LINES)
+                else $fatal(1, "VDMA validation beat accounting mismatch wr=%0d rd=%0d",
+                            wr_beats, rd_beats);
+            $display("[VDMA VALIDATION] frame=%0d %0dx%0d wr=%0d/%0d %0d%% rd=%0d/%0d %0d%% padding-ok ready_prob=%0d",
+                     frame_id, VALID_WIDTH_PIXELS, VALID_HEIGHT_LINES,
+                     wr_beats, wr_cycles, wr_beats * 100 / wr_cycles,
+                     rd_beats, rd_cycles, rd_beats * 100 / rd_cycles,
+                     ready_prob_cfg);
+        end
+
         // Restore the 8x4 frame-store configuration for circular stress.
         axil_m.write(VDMA_WR_STRIDE, STRIDE_BYTES);
         axil_m.write(VDMA_WR_HSIZE, HSIZE_BYTES);
@@ -1031,13 +1093,23 @@ module test_vdma #(
     end
 
     initial begin
-        #20_000 $fatal(1, "VDMA test timeout wr_busy=%0b wr_done=%0b wr_error=%0b wr_axi=%0b marker=%0b config=%0b abort=%0b rd_busy=%0b rd_done=%0b mm2s_state=%0d line=%0d beat=%0d valid=%0b ready=%0b",
-                          wr_busy, wr_done, wr_error, wr_axi_error,
-                          dut.u_s2mm.marker_error, dut.u_s2mm.config_error,
-                          dut.u_s2mm.abort_error,
-                          rd_busy, rd_done, dut.u_mm2s.state,
-                          dut.u_mm2s.output_line, dut.u_mm2s.output_beat,
-                          playback_axis.tvalid, playback_axis.tready);
+        int validate_timeout;
+
+        validate_timeout = 0;
+        void'($value$plusargs("VDMA_VALIDATE=%d", validate_timeout));
+        if (validate_timeout != 0) begin
+            #200_000;
+        end else begin
+            #20_000;
+        end
+
+        $fatal(1, "VDMA test timeout wr_busy=%0b wr_done=%0b wr_error=%0b wr_axi=%0b marker=%0b config=%0b abort=%0b rd_busy=%0b rd_done=%0b mm2s_state=%0d line=%0d beat=%0d valid=%0b ready=%0b",
+               wr_busy, wr_done, wr_error, wr_axi_error,
+               dut.u_s2mm.marker_error, dut.u_s2mm.config_error,
+               dut.u_s2mm.abort_error,
+               rd_busy, rd_done, dut.u_mm2s.state,
+               dut.u_mm2s.output_line, dut.u_mm2s.output_beat,
+               playback_axis.tvalid, playback_axis.tready);
     end
 
 endmodule : test_vdma

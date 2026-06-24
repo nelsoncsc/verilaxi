@@ -22,6 +22,8 @@ SINK_BP     ?=
 TESTTYPE    ?=
 READY_PROB  ?=
 FRAME_FIFO  ?=
+VDMA_VALIDATE ?=
+VIDEO_VALIDATE ?=
 
 AXIS_SRC_BP_VAL   := $(if $(SRC_BP),$(SRC_BP),0)
 AXIS_SINK_BP_VAL  := $(if $(SINK_BP),$(SINK_BP),0)
@@ -30,6 +32,8 @@ AFIFO_TESTTYPE_VAL:= $(if $(TESTTYPE),$(TESTTYPE),0)
 DMA_TESTTYPE_VAL  := $(if $(TESTTYPE),$(TESTTYPE),4)
 CDMA_TESTTYPE_VAL := $(if $(TESTTYPE),$(TESTTYPE),1)
 READY_PROB_VAL    := $(if $(READY_PROB),$(READY_PROB),100)
+VDMA_VALIDATE_TAG := $(if $(VDMA_VALIDATE),_val$(VDMA_VALIDATE),)
+VIDEO_VALIDATE_TAG := $(if $(VIDEO_VALIDATE),_val$(VIDEO_VALIDATE),)
 
 ifeq ($(TESTNAME),axis_register)
   RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
@@ -52,17 +56,17 @@ else ifeq ($(TESTNAME),axis_rr_upsizer)
 else ifeq ($(TESTNAME),axis_rr_downsizer)
   RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
 else ifeq ($(TESTNAME),video_axis_loopback)
-  RUN_TAG := $(TESTNAME)
+  RUN_TAG := $(TESTNAME)$(VIDEO_VALIDATE_TAG)
 else ifeq ($(TESTNAME),video_fifo_loopback)
-  RUN_TAG := $(TESTNAME)
+  RUN_TAG := $(TESTNAME)$(VIDEO_VALIDATE_TAG)
 else ifeq ($(TESTNAME),video_afifo_loopback)
-  RUN_TAG := $(TESTNAME)
+  RUN_TAG := $(TESTNAME)$(VIDEO_VALIDATE_TAG)
 else ifeq ($(TESTNAME),video_adapter_errors)
   RUN_TAG := $(TESTNAME)
 else ifeq ($(TESTNAME),video_mode_clocks)
   RUN_TAG := $(TESTNAME)
 else ifeq ($(TESTNAME),video_rgb_cdc)
-  RUN_TAG := $(TESTNAME)
+  RUN_TAG := $(TESTNAME)$(VIDEO_VALIDATE_TAG)
 else ifeq ($(TESTNAME),axis_fifo)
   RUN_TAG := $(TESTNAME)_ff$(AXIS_FRAME_VAL)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
 else ifeq ($(TESTNAME),axis_afifo)
@@ -70,7 +74,7 @@ else ifeq ($(TESTNAME),axis_afifo)
 else ifeq ($(TESTNAME),dma)
   RUN_TAG := $(TESTNAME)_tt$(DMA_TESTTYPE_VAL)_rp$(READY_PROB_VAL)
 else ifeq ($(TESTNAME),vdma)
-  RUN_TAG := $(TESTNAME)_rp$(READY_PROB_VAL)
+  RUN_TAG := $(TESTNAME)_rp$(READY_PROB_VAL)$(VDMA_VALIDATE_TAG)
 else ifeq ($(TESTNAME),axil_gpio)
   RUN_TAG := $(TESTNAME)
 else ifeq ($(TESTNAME),uart_axil_slave)
@@ -147,6 +151,8 @@ SIM_ARGS += $(if $(SRC_BP),+SRC_BP=$(SRC_BP))
 SIM_ARGS += $(if $(SINK_BP),+SINK_BP=$(SINK_BP))
 SIM_ARGS += $(if $(TESTTYPE),+TESTTYPE=$(TESTTYPE))
 SIM_ARGS += $(if $(READY_PROB),+READY_PROB=$(READY_PROB))
+SIM_ARGS += $(if $(VDMA_VALIDATE),+VDMA_VALIDATE=$(VDMA_VALIDATE))
+SIM_ARGS += $(if $(VIDEO_VALIDATE),+VIDEO_VALIDATE=$(VIDEO_VALIDATE))
 
 # ------------------------
 # VERILATOR macros per test
@@ -183,16 +189,20 @@ else ifeq ($(TESTNAME),axis_rr_downsizer)
   VERILATOR_DEFS := +define+USE_AXIS_RR_DOWNSIZER
 else ifeq ($(TESTNAME),video_axis_loopback)
   VERILATOR_DEFS := +define+USE_VIDEO_AXIS_LOOPBACK
+  VERILATOR_DEFS += $(if $(VIDEO_VALIDATE),+define+VIDEO_VALIDATE)
 else ifeq ($(TESTNAME),video_fifo_loopback)
   VERILATOR_DEFS := +define+USE_VIDEO_FIFO_LOOPBACK
+  VERILATOR_DEFS += $(if $(VIDEO_VALIDATE),+define+VIDEO_VALIDATE)
 else ifeq ($(TESTNAME),video_afifo_loopback)
   VERILATOR_DEFS := +define+USE_VIDEO_AFIFO_LOOPBACK
+  VERILATOR_DEFS += $(if $(VIDEO_VALIDATE),+define+VIDEO_VALIDATE)
 else ifeq ($(TESTNAME),video_adapter_errors)
   VERILATOR_DEFS := +define+USE_VIDEO_ADAPTER_ERRORS
 else ifeq ($(TESTNAME),video_mode_clocks)
   VERILATOR_DEFS := +define+USE_VIDEO_MODE_CLOCKS
 else ifeq ($(TESTNAME),video_rgb_cdc)
   VERILATOR_DEFS := +define+USE_VIDEO_RGB_CDC
+  VERILATOR_DEFS += $(if $(VIDEO_VALIDATE),+define+VIDEO_VALIDATE)
 else ifeq ($(TESTNAME),dma)
   VERILATOR_DEFS := +define+USE_DMA_TEST
 else ifeq ($(TESTNAME),vdma)
