@@ -152,6 +152,13 @@ jobs:
       - name: cdma  (TESTTYPE=0 basic aligned, READY_PROB=50)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=cdma TESTTYPE=0 READY_PROB=50
 
+      # ── VDMA timing (end-to-end pixel clock CDC) ─────────────────────────
+      - name: vdma_timing  (8x4)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=vdma_timing
+
+      - name: vdma_timing  (32x16 VIDEO_VALIDATE)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=vdma_timing VIDEO_VALIDATE=1
+
       # ── Synthesis (Yosys) ─────────────────────────────────────────────────
       - name: synth-all (generic)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make synth-all SYNTH_TARGET=generic

@@ -30,6 +30,9 @@ menu:
 		echo " 23) video_adapter_errors"; \
 		echo " 24) video_mode_clocks"; \
 		echo " 25) video_rgb_cdc"; \
+		echo " 26) video_rgb32"; \
+		echo " 27) video_csc_rgb_ycbcr"; \
+		echo " 28) video_csc_422"; \
 		echo ""; \
 		echo "Commands:"; \
 		echo "  s) synth — synthesize a design with Yosys"; \
@@ -37,7 +40,7 @@ menu:
 		echo "  c) clean all"; \
 		echo "  q) quit"; \
 		echo ""; \
-		echo "Select a test [1-25], command, or q to quit:"; \
+		echo "Select a test [1-28], command, or q to quit:"; \
 		read -r choice; \
 		case "$$choice" in \
 			1) \
@@ -225,6 +228,21 @@ menu:
 		25) \
 			echo "You selected VIDEO_RGB_CDC test."; \
 			$(MAKE) clean run TESTNAME=video_rgb_cdc; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		26) \
+			echo "You selected VIDEO_RGB32 test."; \
+			$(MAKE) clean run TESTNAME=video_rgb32; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		27) \
+			echo "You selected VIDEO_CSC_RGB_YCBCR test."; \
+			$(MAKE) clean run TESTNAME=video_csc_rgb_ycbcr; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		28) \
+			echo "You selected VIDEO_CSC_422 test."; \
+			$(MAKE) clean run TESTNAME=video_csc_422; \
 			code=$$?; \
 			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
 		s|S) \

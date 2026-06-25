@@ -53,6 +53,10 @@ module testbench;
         test_vdma test_vdma_u0 (.clk   (clk),
                                 .rst_n (rst_n)
                                );
+    `elsif USE_VDMA_TIMING_TEST
+        test_vdma_timing test_vdma_timing_u0 (.clk   (clk),
+                                              .rst_n (rst_n)
+                                             );
     `elsif USE_AXIS_AFIFO
         test_axis_afifo test_axis_afifo_u0 (.clk   (clk),
                                             .rst_n (rst_n)
@@ -111,6 +115,18 @@ module testbench;
                                                          );
     `elsif USE_VIDEO_RGB_CDC
         test_video_rgb_cdc test_video_rgb_cdc_u0 (.clk   (clk),
+                                                  .rst_n (rst_n)
+                                                 );
+    `elsif USE_VIDEO_RGB32
+        test_video_rgb32 test_video_rgb32_u0 (.clk   (clk),
+                                              .rst_n (rst_n)
+                                             );
+    `elsif USE_VIDEO_CSC_RGB_YCBCR
+        test_video_csc_rgb_ycbcr test_video_csc_rgb_ycbcr_u0 (.clk   (clk),
+                                                              .rst_n (rst_n)
+                                                             );
+    `elsif USE_VIDEO_CSC_422
+        test_video_csc_422 test_video_csc_422_u0 (.clk   (clk),
                                                   .rst_n (rst_n)
                                                  );
     `else
