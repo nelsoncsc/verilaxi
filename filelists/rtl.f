@@ -21,6 +21,12 @@ rtl/video/snix_video_to_axis.sv
 rtl/video/snix_axis_to_video.sv
 rtl/video/snix_video_rgb24_pack.sv
 rtl/video/snix_video_rgb24_unpack.sv
+rtl/video/snix_video_rgb32_pack.sv
+rtl/video/snix_video_rgb32_unpack.sv
+rtl/video/snix_video_rgb_to_ycbcr.sv
+rtl/video/snix_video_ycbcr_to_rgb.sv
+rtl/video/snix_video_csc_422.sv
+rtl/video/snix_video_csc_422_expand.sv
 rtl/video/snix_video_capture_cdc.sv
 rtl/video/snix_video_display_cdc.sv
 

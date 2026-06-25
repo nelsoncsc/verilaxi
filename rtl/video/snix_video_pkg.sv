@@ -2,6 +2,24 @@
 
 package snix_video_pkg;
 
+    typedef enum logic [3:0] {
+        PIXFMT_RGB24   = 4'd0,
+        PIXFMT_RGB32   = 4'd1,
+        PIXFMT_YUYV422 = 4'd2,
+        PIXFMT_UYVY422 = 4'd3,
+        PIXFMT_YUV420P = 4'd4
+    } pixel_format_t;
+
+    function automatic int unsigned pixel_fmt_bytes(input pixel_format_t fmt);
+        case (fmt)
+            PIXFMT_RGB24:   pixel_fmt_bytes = 3;
+            PIXFMT_RGB32:   pixel_fmt_bytes = 4;
+            PIXFMT_YUYV422: pixel_fmt_bytes = 2;
+            PIXFMT_UYVY422: pixel_fmt_bytes = 2;
+            default:        pixel_fmt_bytes = 4;
+        endcase
+    endfunction
+
     typedef struct packed {
         int unsigned h_active;
         int unsigned h_front_porch;
