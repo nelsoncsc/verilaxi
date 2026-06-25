@@ -47,20 +47,10 @@ module snix_async_fifo #(parameter DATA_WIDTH = 8,
             wgray   <= next_wr_addr ^ (next_wr_addr>>1);
         end
 
-     always_ff @(posedge rclk or negedge rrst_n)
-        if(!rrst_n) begin
-            rd_addr <= (ADDR_W+1)'(0);
-            rgray   <= (ADDR_W+1)'(0);
-        end
-        else if(lcl_read && !lcl_rd_empty) begin
-            rd_addr <= next_rd_addr;
-            rgray   <= next_rd_addr ^ (next_rd_addr>>1);
-        end
-    
-
     always_ff @(posedge wclk)
-        mem[wr_addr[ADDR_W-1:0]] <= wdata; 
-    
+        if (wr_en && !wfull)
+            mem[wr_addr[ADDR_W-1:0]] <= wdata;
+
 
     assign next_rd_addr = rd_addr + 1'b1;
     assign lcl_rd_data  = mem[rd_addr[ADDR_W-1:0]];
@@ -92,21 +82,39 @@ module snix_async_fifo #(parameter DATA_WIDTH = 8,
         end
     end
 
-    assign wfull        = wr_rgray == {~wgray[ADDR_W], wgray[ADDR_W-1:0]};
+    assign wfull        = wr_rgray == {~wgray[ADDR_W:ADDR_W-1], wgray[ADDR_W-2:0]};
     assign lcl_rd_empty = rd_wgray == rgray;
-    assign lcl_read     = rempty || rd_en;   
+    assign lcl_read     = rempty || rd_en;
 
+    // Single block: all rclk state sampled simultaneously so Verilator reads
+    // lcl_rd_empty (depends on rgray) before any NBA update of rgray is applied.
     always_ff @(posedge rclk or negedge rrst_n)
         if(!rrst_n) begin
-            rempty <= 1'b1;
+            rd_addr <= (ADDR_W+1)'(0);
+            rgray   <= (ADDR_W+1)'(0);
+            rempty  <= 1'b1;
         end
         else if(lcl_read) begin
+            if(!lcl_rd_empty) begin
+                rd_addr <= next_rd_addr;
+                rgray   <= next_rd_addr ^ (next_rd_addr>>1);
+            end
             rempty <= lcl_rd_empty;
+            rdata  <= lcl_rd_data;
         end
 
-    always_ff @(posedge rclk)
-        if(lcl_read)
-            rdata <= lcl_rd_data;
-   
+
+`ifdef AFIFO_DEBUG
+    always_ff @(posedge rclk) begin
+        if (DATA_WIDTH == 74 && lcl_read && !lcl_rd_empty)
+            $display("[AFIFO74_R] t=%0t rd_addr=%0d->%0d rd_en=%0b rempty=%0b data=%016h",
+                     $time, rd_addr, next_rd_addr, rd_en, rempty, lcl_rd_data[64:1]);
+    end
+    always_ff @(posedge wclk) begin
+        if (DATA_WIDTH == 74 && wr_en && !wfull)
+            $display("[AFIFO74_W] t=%0t wr_addr=%0d data=%016h",
+                     $time, wr_addr, wdata[64:1]);
+    end
+`endif
 
 endmodule: snix_async_fifo
