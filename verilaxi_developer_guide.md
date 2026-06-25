@@ -15,9 +15,12 @@
    - 3.1 [DMA and CDMA Datapaths](#31-dma-and-cdma-datapaths)
    - 3.2 [UART and AXI-Lite Control Plane](#32-uart-and-axi-lite-control-plane)
    - 3.3 [AXI-Stream Infrastructure](#33-axi-stream-infrastructure)
-4. [DMA and CDMA CSR Register Maps](#4-dma-and-cdma-csr-register-maps)
+   - 3.4 [Video Infrastructure](#34-video-infrastructure)
+   - 3.5 [AXI Video DMA (VDMA)](#35-axi-video-dma-vdma)
+4. [DMA, CDMA, and VDMA CSR Register Maps](#4-dma-cdma-and-vdma-csr-register-maps)
    - 4.1 [DMA Register Map (snix_axi_dma_csr)](#41-dma-register-map-snix_axi_dma_csr)
    - 4.2 [CDMA Register Map (snix_axi_cdma_csr)](#42-cdma-register-map-snix_axi_cdma_csr)
+   - 4.3 [VDMA Register Map (snix_axi_vdma)](#43-vdma-register-map-snix_axi_vdma)
 5. [DMA and CDMA External Interfaces](#5-dma-and-cdma-external-interfaces)
    - 5.1 [AXI-Lite Slave (Control)](#51-axi-lite-slave-control)
    - 5.2 [AXI4-Full Master — S2MM Write Channels](#52-axi4-full-master--s2mm-write-channels)
@@ -706,7 +709,372 @@ AXI-Lite slave register file for the CDMA. Structure mirrors `snix_axi_dma_csr` 
 
 ---
 
-## 4. DMA and CDMA CSR Register Maps
+### 3.4 Video Infrastructure
+
+The video infrastructure provides a self-contained pipeline for transporting progressive video frames over AXI-Stream and into AXI4 memory. The modules follow a composable layered model: a timing generator drives the pixel clock grid, an adapter converts the native video bus to AXI-Stream, optional width converters and asynchronous FIFOs cross clock domains, and a symmetric adapter converts AXI-Stream back to native video for display.
+
+![Video pipeline](docs/video_pipeline.svg)
+
+#### `snix_video_pkg` — Video Timing Package
+
+**File:** `rtl/video/snix_video_pkg.sv`
+
+Defines the `video_timing_t` struct and pre-computed timing presets used by every video module.
+
+**`video_timing_t` struct**
+
+| Field            | Type           | Description                        |
+|------------------|----------------|------------------------------------|
+| `h_active`       | `int unsigned` | Active pixels per line             |
+| `h_front_porch`  | `int unsigned` | Horizontal front porch (pixels)    |
+| `h_sync_pulse`   | `int unsigned` | Horizontal sync pulse width        |
+| `h_back_porch`   | `int unsigned` | Horizontal back porch (pixels)     |
+| `v_active`       | `int unsigned` | Active lines per frame             |
+| `v_front_porch`  | `int unsigned` | Vertical front porch (lines)       |
+| `v_sync_pulse`   | `int unsigned` | Vertical sync pulse width          |
+| `v_back_porch`   | `int unsigned` | Vertical back porch (lines)        |
+
+**Timing presets**
+
+| Constant              | Resolution  | Pixel clock       |
+|-----------------------|-------------|-------------------|
+| `TEST_8x4`            | 8×4         | — (protocol simulation only) |
+| `TEST_16x8`           | 16×8        | —                 |
+| `TEST_32x16`          | 32×16       | —                 |
+| `TEST_64x32`          | 64×32       | —                 |
+| `VGA_640x480`         | 640×480     | 25.175 MHz        |
+| `HD_1280x720`         | 1280×720    | 74.25 MHz         |
+| `FHD_1920x1080`       | 1920×1080   | 148.5 MHz         |
+| `UHD_3840x2160`       | 3840×2160   | 594.0 MHz         |
+
+The nominal pixel clock constants (`VGA_640x480_CLK_HZ` etc.) are `longint unsigned` localparams consumed by simulation clock generators and synthesis constraints; physical hardware must generate these with a PLL or MMCM.
+
+---
+
+#### `snix_video_timing_gen` — Video Timing Generator
+
+**File:** `rtl/video/snix_video_timing_gen.sv`
+
+Generates horizontal and vertical sync, active-video window, start-of-frame (SOF), and end-of-line (EOL) signals from a `video_timing_t` timing preset.
+
+**Parameters**
+
+| Parameter | Default        | Description                        |
+|-----------|----------------|------------------------------------|
+| `TIMING`  | `VGA_640x480`  | Timing preset (`video_timing_t`)   |
+
+**Outputs**
+
+| Port          | Description                                                    |
+|---------------|----------------------------------------------------------------|
+| `hsync`       | Horizontal sync pulse (active high, asserted during h_sync_pulse region) |
+| `vsync`       | Vertical sync pulse (active high, asserted during v_sync_pulse region)   |
+| `active_video`| High for every pixel within the active area                    |
+| `sof`         | Single-cycle pulse at pixel (0,0) of each frame                |
+| `eol`         | Single-cycle pulse at the last active pixel of each line       |
+| `pixel_x`     | Current horizontal pixel counter (full H_TOTAL range)          |
+| `pixel_y`     | Current vertical line counter (full V_TOTAL range)             |
+
+Counters reset on `rst_n` deassertion. `pixel_x` wraps at `H_TOTAL − 1`; `pixel_y` increments at each line wrap and resets at `V_TOTAL − 1`.
+
+---
+
+#### `snix_video_pattern_gen` — Colour Bar Pattern Generator
+
+**File:** `rtl/video/snix_video_pattern_gen.sv`
+
+Combinational colour-bar generator that maps a pixel position to a 24-bit RGB colour. Useful for stand-alone simulation and board bring-up without an external frame source.
+
+**Parameters**
+
+| Parameter | Default       | Description                      |
+|-----------|---------------|----------------------------------|
+| `TIMING`  | `VGA_640x480` | Timing preset for bar division   |
+
+**Behaviour**
+
+The active area is divided into eight equal vertical bars. Bar index is computed as `(pixel_x × 8) / h_active`. Bars are assigned colours in EBU order: white → yellow → cyan → green → magenta → red → blue → black. Outside the active area, `pixel_data` is forced to `24'h000000`.
+
+| Bar | Colour    | `pixel_data` |
+|-----|-----------|-------------|
+| 0   | White     | `0xFFFFFF`  |
+| 1   | Yellow    | `0xFFFF00`  |
+| 2   | Cyan      | `0x00FFFF`  |
+| 3   | Green     | `0x00FF00`  |
+| 4   | Magenta   | `0xFF00FF`  |
+| 5   | Red       | `0xFF0000`  |
+| 6   | Blue      | `0x0000FF`  |
+| 7   | Black     | `0x000000`  |
+
+---
+
+#### `snix_video_to_axis` — Video-to-AXI-Stream Adapter
+
+**File:** `rtl/video/snix_video_to_axis.sv`
+
+Converts native parallel video (`video_de`, `video_sof`, `video_eol`, `video_data`) to AXI4-Stream. The conversion is combinational; no pipeline registers are inserted.
+
+**Parameters**
+
+| Parameter    | Default | Description                                   |
+|--------------|---------|-----------------------------------------------|
+| `DATA_WIDTH` | 24      | Video pixel / stream data width (bits)        |
+| `USER_WIDTH` | 1       | AXI-Stream `tuser` width; `tuser[0]` carries SOF |
+
+**Signal mapping**
+
+| Video port    | AXI-Stream port  | Notes                                      |
+|---------------|------------------|--------------------------------------------|
+| `video_de`    | `m_axis_tvalid`  | Active-video enable drives valid           |
+| `video_sof`   | `m_axis_tuser[0]`| Start-of-frame sideband                   |
+| `video_eol`   | `m_axis_tlast`   | End-of-line marks each packet boundary    |
+| `video_data`  | `m_axis_tdata`   | Raw pixel data, no re-ordering            |
+
+**`overflow` flag** — native video sources cannot be backpressured. If `m_axis_tready` is low while `video_de` is high, the sticky `overflow` flag is set. A production design inserts `snix_video_capture_cdc` (or at minimum an async FIFO) immediately after this adapter so any backpressure from a downstream AXI clock domain is absorbed.
+
+---
+
+#### `snix_axis_to_video` — AXI-Stream-to-Video Adapter
+
+**File:** `rtl/video/snix_axis_to_video.sv`
+
+Converts AXI4-Stream back to native video, synchronised to an externally generated display timing reference.
+
+**Parameters**
+
+| Parameter    | Default  | Description                              |
+|--------------|----------|------------------------------------------|
+| `DATA_WIDTH` | 24       | Video pixel / stream data width (bits)   |
+| `USER_WIDTH` | 1        | `tuser` width; `tuser[0]` = SOF          |
+| `BLANK_DATA` | `'0`     | Pixel value driven during blanking       |
+
+**Behaviour**
+
+`s_axis_tready` is simply `timing_de` — the stream is consumed exactly when the display timing window is active. `video_de`, `video_sof`, and `video_eol` are derived from the timing inputs and stream valid state. `video_data` outputs `BLANK_DATA` during blanking or when the stream stalls.
+
+Two sticky error flags are provided:
+
+| Flag           | Condition                                                        |
+|----------------|------------------------------------------------------------------|
+| `underflow`    | `timing_de` asserted but `s_axis_tvalid` low — display demanded a pixel that the stream has not yet supplied |
+| `frame_error`  | Accepted pixel has `tuser[0] ≠ timing_sof` or `tlast ≠ timing_eol` — SOF/EOL framing mismatch between stream and timing reference |
+
+---
+
+#### `snix_video_rgb24_pack` — RGB24 Packer
+
+**File:** `rtl/video/snix_video_rgb24_pack.sv`
+
+Packs a 24-bit-per-pixel AXI-Stream into a wider AXI bus word (e.g. 64-bit). Useful before writing a capture stream to an AXI4 memory port that uses a wider beat size.
+
+**Parameters**
+
+| Parameter       | Default | Description                             |
+|-----------------|---------|-----------------------------------------|
+| `OUT_DATA_WIDTH`| 64      | Output beat width (bits, multiple of 8) |
+
+**Behaviour**
+
+Wraps `snix_axis_rr_converter` with `IN_DATA_WIDTH=24` and the parameterised `OUT_DATA_WIDTH`. For a 24→64 conversion, the GCD is 8, giving `IN_RATIO=8` and `OUT_RATIO=3` — three 24-bit input pixels pack into one eight-byte output beat, producing a lossless byte-level mapping with accurate TKEEP on the final (possibly partial) beat.
+
+SOF (`tuser[0]`) is propagated using a `sof_pending` latch: SOF arriving at the input side is captured and forwarded on the first output beat produced from that batch, since the rational-ratio converter may buffer multiple input beats before emitting an output.
+
+---
+
+#### `snix_video_rgb24_unpack` — RGB24 Unpacker
+
+**File:** `rtl/video/snix_video_rgb24_unpack.sv`
+
+Symmetric inverse of `snix_video_rgb24_pack`: splits a wide AXI memory word back into a 24-bit-per-pixel AXI-Stream. Used on the playback path before `snix_axis_to_video`.
+
+**Parameters**
+
+| Parameter      | Default | Description                          |
+|----------------|---------|--------------------------------------|
+| `IN_DATA_WIDTH`| 64      | Input beat width (bits)              |
+
+SOF forwarding uses the same `sof_pending` latch approach as the packer.
+
+---
+
+#### `snix_video_capture_cdc` — Capture Clock-Domain Crossing
+
+**File:** `rtl/video/snix_video_capture_cdc.sv`
+
+Bridges the full capture pipeline from pixel clock to AXI clock domain in a single module.
+
+**Parameters**
+
+| Parameter    | Default | Description                               |
+|--------------|---------|-------------------------------------------|
+| `DATA_WIDTH` | 64      | AXI-side data width (bits); also sets pack output width |
+| `FIFO_DEPTH` | 64      | Async FIFO depth (entries, power of 2)   |
+
+**Internal pipeline**
+
+```
+[capture_clk]
+  snix_video_rgb24_pack (24 → DATA_WIDTH)
+        ↓
+  snix_axis_afifo        (CDC: capture_clk → axi_clk)
+        ↓
+[axi_clk]
+  {tuser, tkeep, tdata}  (m_axis_* output ports)
+```
+
+The async FIFO is instantiated with `DATA_WIDTH + KEEP_WIDTH + 1` bits to carry `tdata`, `tkeep`, and `tuser` as a single concatenated word. `tlast` is carried by the FIFO's native TLAST port.
+
+---
+
+#### `snix_video_display_cdc` — Display Clock-Domain Crossing
+
+**File:** `rtl/video/snix_video_display_cdc.sv`
+
+Symmetric inverse of `snix_video_capture_cdc`: bridges from AXI clock domain to display pixel clock.
+
+**Parameters**
+
+| Parameter    | Default | Description                           |
+|--------------|---------|---------------------------------------|
+| `DATA_WIDTH` | 64      | AXI-side input data width (bits)      |
+| `FIFO_DEPTH` | 64      | Async FIFO depth                      |
+
+**Internal pipeline**
+
+```
+[axi_clk]
+  snix_axis_afifo        (CDC: axi_clk → display_clk)
+        ↓
+[display_clk]
+  snix_video_rgb24_unpack (DATA_WIDTH → 24)
+        ↓
+  m_axis_* output (24-bit pixels)
+```
+
+`tuser`, `tkeep`, and `tdata` are concatenated into the async FIFO's data word identically to the capture side so that SOF survives the CDC boundary without a separate synchroniser.
+
+---
+
+### 3.5 AXI Video DMA (VDMA)
+
+The VDMA implements a full-frame scatter-gather pipeline for progressive video: a capture (S2MM) engine writes one frame at a time into an AXI4 memory triple-buffer, a frame-store manages buffer rotation and newest-frame tracking, and a playback (MM2S) engine reads frames back out to an AXI-Stream display pipeline. Software controls the engines through a 16-register AXI-Lite CSR bank.
+
+![VDMA block diagram](docs/vdma.svg)
+
+#### `snix_axi_vdma` — Top-Level VDMA
+
+**File:** `rtl/axi/snix_axi_vdma.sv`
+
+Integration wrapper that connects the CSR, frame store, S2MM engine, and MM2S engine. Exposes separate AXI4-Full master ports for S2MM writes (`s2mm_*`) and MM2S reads (`mm2s_*`) so the two engines can be mapped to independent memory ports.
+
+**Parameters**
+
+| Parameter        | Default | Description                                   |
+|------------------|---------|-----------------------------------------------|
+| `ADDR_WIDTH`     | 32      | AXI4 memory address width (bits)              |
+| `DATA_WIDTH`     | 32      | AXI4 memory and stream data width (bits)      |
+| `AXIL_ADDR_WIDTH`| 32      | AXI-Lite CSR address width (bits)             |
+| `AXIL_DATA_WIDTH`| 32      | AXI-Lite CSR data width (bits)                |
+| `ID_WIDTH`       | 4       | AXI4 ID width (bits)                          |
+| `USER_WIDTH`     | 1       | AXI4/Stream USER sideband width (bits)        |
+| `LINE_FIFO_DEPTH`| 64      | Line FIFO depth in each S2MM and MM2S engine  |
+
+**Top-level status outputs**
+
+| Port                   | Width | Description                                         |
+|------------------------|-------|-----------------------------------------------------|
+| `wr_busy`              | 1     | S2MM engine is actively writing a frame             |
+| `wr_done`              | 1     | Single-cycle pulse: S2MM frame complete or aborted  |
+| `wr_error`             | 1     | S2MM framing or configuration error (sticky)        |
+| `wr_axi_error`         | 1     | S2MM received a non-OKAY AXI B-channel response     |
+| `rd_busy`              | 1     | MM2S engine is actively reading a frame             |
+| `rd_done`              | 1     | Single-cycle pulse: MM2S frame complete or aborted  |
+| `rd_error`             | 1     | MM2S configuration or AXI error (sticky)            |
+| `rd_axi_error`         | 1     | MM2S received a non-OKAY AXI R-channel response     |
+| `irq`                  | 1     | Interrupt output; cleared by IRQ_ACK or FRAME_CTRL[16] |
+| `vdma_status`          | 32    | Live copy of the STATUS register (reg 6)            |
+| `write_slot`           | 2     | Current S2MM target buffer slot (0–2)               |
+| `read_slot`            | 2     | Current MM2S source buffer slot (0–2)               |
+| `newest_complete_slot` | 2     | Most recently completed capture slot                |
+| `valid_slots`          | 3     | Bitmask: which of the three slots hold valid frames |
+
+---
+
+#### `snix_axi_vdma_frame_store` — Triple-Buffer Frame Store
+
+**File:** `rtl/axi/snix_axi_vdma_frame_store.sv`
+
+Manages buffer rotation across three frame slots. The write side advances through slots 0→1→2→0 while avoiding the slot the reader is currently consuming. The read side selects the slot to play back based on the configured policy.
+
+**Parameters**
+
+| Parameter    | Default | Description                |
+|--------------|---------|----------------------------|
+| `ADDR_WIDTH` | 32      | Memory address width (bits)|
+
+**Playback selection priority**
+
+1. **Park mode** — if `park_mode = 1` and `park_slot` is valid, always read from `park_slot`.
+2. **Frame delay** — compute `delayed_candidate = newest_complete_slot − frame_delay` (wrapping mod 3). Read from `delayed_candidate` if valid.
+3. **Newest** — fall back to `newest_complete_slot` if the delayed candidate is not yet valid.
+
+`frame_delay = 0` selects the latest completed frame (zero-delay genlock). `frame_delay = 1` introduces a one-frame lag, giving the downstream pipeline time to consume the previous frame before the writer can overwrite it. `frame_delay = 2` provides a two-frame lag.
+
+**Overwrite detection** — `overwrite_event` fires (one cycle) when the writer's next slot still holds an unread valid frame (i.e. the reader is falling behind and content will be overwritten).
+
+---
+
+#### `snix_axi_vdma_s2mm` — VDMA Stream-to-Memory Engine
+
+**File:** `rtl/axi/snix_axi_vdma_s2mm.sv`
+
+Captures one video frame from AXI4-Stream into AXI4 memory. Burst boundaries are computed per line: each line is written as one or more bursts of up to `burst_len + 1` beats, with automatic 4 KB boundary clipping. The stride allows padding between lines (as in typical frame buffers where stride ≥ h_active × bytes_per_pixel).
+
+**FSM states**
+
+| State    | Description                                                         |
+|----------|---------------------------------------------------------------------|
+| `IDLE`   | Waiting for `frame_start`                                           |
+| `ACTIVE` | Issuing AW bursts and W data for the current frame; advances line counter after each BRESP |
+| `ABORT`  | Drains any outstanding B-channel responses after a `frame_stop` or error |
+
+Up to `MAX_OUTSTANDING = 4` AW descriptors may be in flight simultaneously. A descriptor FIFO tracks pending burst lengths so each BRESP can be matched to the correct byte count.
+
+**Error flags** (sticky, cleared on next `frame_start`)
+
+| Flag           | Condition                                                              |
+|----------------|------------------------------------------------------------------------|
+| `marker_error` | Input `tlast` appeared at an unexpected beat position within a line    |
+| `config_error` | `frame_hsize_bytes` or `frame_vsize_lines` is zero at frame start      |
+| `abort_error`  | `frame_stop` was asserted before the frame completed                   |
+| `axi_error`    | B-channel response was not OKAY                                        |
+
+---
+
+#### `snix_axi_vdma_mm2s` — VDMA Memory-to-Stream Engine
+
+**File:** `rtl/axi/snix_axi_vdma_mm2s.sv`
+
+Reads one video frame from AXI4 memory and presents it as AXI4-Stream. Mirrors the S2MM engine in structure, issuing AR bursts per line with the same 4 KB boundary clipping and outstanding-request limit.
+
+**FSM states**
+
+| State         | Description                                                               |
+|---------------|---------------------------------------------------------------------------|
+| `IDLE`        | Waiting for `frame_start`                                                 |
+| `ACTIVE`      | Issuing AR bursts; received R data is stored in a line FIFO and drained to `m_axis_*` |
+| `WAIT_OUTPUT` | All AR bursts issued; draining remaining FIFO output before asserting `frame_done` |
+| `ABORT`       | Draining after error or `frame_stop`                                      |
+
+`TLAST` is asserted on the last beat of each line and `TUSER[0]` carries SOF on the first beat of the first line.
+
+**Prefetch behaviour** — the engine may issue up to `MAX_OUTSTANDING = 4` AR bursts ahead of the current FIFO drain position, hiding AXI read latency behind line-FIFO buffering.
+
+**Measured throughput (64×32 validation frame, 64-bit bus, burst-len=15)** — MM2S sustains approximately **88%** bus efficiency across tested `READY_PROB` settings. S2MM reaches approximately **86%** with no memory backpressure; efficiency scales with injected source-stall and memory-backpressure conditions. The primary remaining optimisation opportunity is reducing per-line and per-burst turnaround idle cycles on the S2MM write path.
+
+---
+
+## 4. DMA, CDMA, and VDMA CSR Register Maps
 
 Base address is application-defined. All registers are 32 bits wide. Byte offsets assume `AXIL_DATA_WIDTH = 32`.
 
@@ -859,6 +1227,133 @@ write_reg(CDMA_CTRL, (7 << 6) | (3 << 3) | 0x1);
 
 // 4. Poll for completion (STATUS is write-protected; no manual clear needed)
 while (!(read_reg(STATUS) & 0x1));
+```
+
+---
+
+### 4.3 VDMA Register Map (`snix_axi_vdma`)
+
+Base address is application-defined. All registers are 32 bits wide and aligned to 4-byte offsets. `AXIL_DATA_WIDTH` is assumed to be 32.
+
+| Offset  | Name           | Access | Description                                         |
+|---------|----------------|--------|-----------------------------------------------------|
+| `0x00`  | `WR_CTRL`      | R/W    | S2MM control — start/stop/circular/size/len         |
+| `0x04`  | `WR_ADDR`      | R/W    | S2MM frame base address (single-frame mode)         |
+| `0x08`  | `WR_STRIDE`    | R/W    | S2MM line stride in bytes                           |
+| `0x0C`  | `RD_CTRL`      | R/W    | MM2S control — start/stop/circular/size/len         |
+| `0x10`  | `RD_ADDR`      | R/W    | MM2S frame base address (single-frame mode)         |
+| `0x14`  | `RD_STRIDE`    | R/W    | MM2S line stride in bytes                           |
+| `0x18`  | `STATUS`       | RO     | Live status (read-only, written by hardware)        |
+| `0x1C`  | `WR_HSIZE`     | R/W    | S2MM active pixels per line × bytes per pixel       |
+| `0x20`  | `WR_VSIZE`     | R/W    | S2MM active lines per frame                         |
+| `0x24`  | `RD_HSIZE`     | R/W    | MM2S active pixels per line × bytes per pixel       |
+| `0x28`  | `RD_VSIZE`     | R/W    | MM2S active lines per frame                         |
+| `0x2C`  | `FRAME_ADDR0`  | R/W    | Triple-buffer slot 0 base address                   |
+| `0x30`  | `FRAME_ADDR1`  | R/W    | Triple-buffer slot 1 base address                   |
+| `0x34`  | `FRAME_ADDR2`  | R/W    | Triple-buffer slot 2 base address                   |
+| `0x38`  | `FRAME_CTRL`   | R/W    | Frame-store mode, genlock, IRQ enables, global clear |
+| `0x3C`  | `IRQ_ACK`      | W1S    | Interrupt and fault acknowledge (self-clearing)     |
+
+---
+
+#### 0x00 — WR_CTRL
+
+| Bits     | Field           | Access | Description                                                   |
+|----------|-----------------|--------|---------------------------------------------------------------|
+| `[0]`    | `wr_start`      | W1S    | Write `1` to start S2MM. Self-clears next cycle.             |
+| `[1]`    | `wr_stop`       | W1S    | Write `1` to abort S2MM. Self-clears next cycle.             |
+| `[2]`    | `wr_circular`   | R/W    | `1` = continuous free-running mode; restarts automatically after each `wr_done` |
+| `[5:3]`  | `wr_beat_size`  | R/W    | AXI burst beat size (AXI `awsize` encoding: `3` = 8 B/beat)  |
+| `[13:6]` | `wr_burst_len`  | R/W    | Maximum AXI burst length − 1 (`awlen` value)                  |
+| `[31:14]`| —               | —      | Reserved                                                      |
+
+#### 0x04 — WR_ADDR / 0x10 — RD_ADDR
+
+Base address used when `FRAME_CTRL[0]` (frame-store enable) is `0`. In frame-store mode these registers are ignored; the frame-store selects from `FRAME_ADDR0/1/2`.
+
+#### 0x08 — WR_STRIDE / 0x14 — RD_STRIDE
+
+Line stride in bytes. Must be ≥ `WR_HSIZE` / `RD_HSIZE`. The difference (`stride − hsize`) is the per-line padding written to (or read over) in memory, matching typical frame-buffer alignment requirements.
+
+#### 0x18 — STATUS (read-only)
+
+| Bits      | Field                  | Description                                      |
+|-----------|------------------------|--------------------------------------------------|
+| `[0]`     | `wr_done`              | S2MM frame complete (sticky)                     |
+| `[1]`     | `rd_done`              | MM2S frame complete (sticky)                     |
+| `[2]`     | `wr_busy`              | S2MM engine running                              |
+| `[3]`     | `rd_busy`              | MM2S engine running                              |
+| `[4]`     | `wr_error`             | S2MM framing/config error (sticky)               |
+| `[5]`     | `rd_error`             | MM2S error (sticky)                              |
+| `[6]`     | `wr_axi_error`         | S2MM non-OKAY BRESP (sticky, clears on fault-clear) |
+| `[7]`     | `rd_axi_error`         | MM2S non-OKAY RRESP (sticky)                    |
+| `[8]`     | `irq`                  | Interrupt pending                                |
+| `[10:9]`  | `write_slot`           | Current S2MM slot (0–2)                          |
+| `[12:11]` | `read_slot`            | Current MM2S slot (0–2)                          |
+| `[14:13]` | `newest_complete_slot` | Most recently completed capture slot             |
+| `[17:15]` | `valid_slots`          | Bitmask of slots holding valid frames            |
+| `[18]`    | `genlock_pending`      | Genlock event queued, waiting for reader idle    |
+| `[19]`    | `rd_frame_available`   | At least one valid slot ready for playback       |
+| `[23:20]` | `underrun_count`       | Saturating 4-bit underrun counter                |
+| `[27:24]` | `overwrite_count`      | Saturating 4-bit overwrite counter               |
+| `[31:28]` | `sync_loss_count`      | Saturating 4-bit genlock sync-loss counter       |
+
+#### 0x38 — FRAME_CTRL
+
+| Bits      | Field               | Access | Description                                                   |
+|-----------|---------------------|--------|---------------------------------------------------------------|
+| `[0]`     | `frame_store_enable`| R/W    | `1` = use triple-buffer (`FRAME_ADDR0/1/2`); `0` = use `WR_ADDR`/`RD_ADDR` |
+| `[1]`     | `park_mode`         | R/W    | `1` = MM2S always reads from `park_slot`                      |
+| `[3:2]`   | `park_slot`         | R/W    | Buffer slot to park on (0–2)                                  |
+| `[4]`     | `genlock_enable`    | R/W    | `1` = capture-driven genlock; MM2S restarts only after new S2MM completes |
+| `[6:5]`   | `frame_delay`       | R/W    | `0` = newest frame; `1` = one frame behind newest; `2` = two frames behind |
+| `[8]`     | `irq_on_wr_done`    | R/W    | Assert `irq` when S2MM completes a frame                      |
+| `[9]`     | `irq_on_rd_done`    | R/W    | Assert `irq` when MM2S completes a frame                      |
+| `[10]`    | `irq_on_error`      | R/W    | Assert `irq` on any error condition                           |
+| `[16]`    | `global_clear`      | W1S    | Clear IRQ latch, sticky fault flags, and telemetry counters simultaneously. Self-clears next cycle. |
+
+#### 0x3C — IRQ_ACK
+
+| Bits  | Field          | Access | Description                       |
+|-------|----------------|--------|-----------------------------------|
+| `[0]` | `irq_ack`      | W1S    | Clear IRQ latch                   |
+| `[1]` | `fault_ack`    | W1S    | Clear sticky AXI error flags      |
+| `[2]` | `telemetry_ack`| W1S    | Zero underrun/overwrite/sync-loss counters |
+
+All bits self-clear one cycle after being written.
+
+#### Typical Initialisation Sequence (Frame-Store Mode with Genlock)
+
+```
+// 1. Set three frame buffer addresses
+write_reg(FRAME_ADDR0, 0x1000_0000);
+write_reg(FRAME_ADDR1, 0x1010_0000);
+write_reg(FRAME_ADDR2, 0x1020_0000);
+
+// 2. Set frame geometry (1920×1080, 64-bit bus → 8 bytes/pixel, stride = hsize)
+write_reg(WR_HSIZE,  1920 * 8);   // 15360 bytes per line
+write_reg(WR_VSIZE,  1080);
+write_reg(WR_STRIDE, 1920 * 8);
+write_reg(RD_HSIZE,  1920 * 8);
+write_reg(RD_VSIZE,  1080);
+write_reg(RD_STRIDE, 1920 * 8);
+
+// 3. Enable frame store, genlock, zero frame delay, IRQ on write done
+write_reg(FRAME_CTRL,
+    (1 << 0) |   // frame_store_enable
+    (1 << 4) |   // genlock_enable
+    (0 << 5) |   // frame_delay = 0 (newest frame)
+    (1 << 8));   // irq_on_wr_done
+
+// 4. Start S2MM: beat_size=3 (8 B), burst_len=15 (16 beats), circular
+write_reg(WR_CTRL, (15 << 6) | (3 << 3) | (1 << 2) | 1);
+
+// 5. Start MM2S
+write_reg(RD_CTRL, (15 << 6) | (3 << 3) | 1);
+
+// 6. Poll or wait for IRQ, then acknowledge
+while (!(read_reg(STATUS) & 0x1));
+write_reg(IRQ_ACK, 0x1);
 ```
 
 ---
@@ -1411,11 +1906,13 @@ make run TESTNAME=video_mode_clocks
 make run TESTNAME=video_rgb_cdc
 ```
 
-The VDMA validation profile enables `VDMA_VALIDATE=1`, which adds a 64x32 frame pass after the default 8x4, 32x12, partial-beat, frame-store, telemetry, and fault checks. The helper prints a compact throughput summary for S2MM/MM2S and keeps full per-case make logs under `work/logs/`.
+The VDMA validation profile enables `VDMA_VALIDATE=1`, which adds a 64×32 frame pass after the default 8×4, 32×12, partial-beat, frame-store, telemetry, and fault checks. The profile enforces hard minimum throughput assertions on both paths; the helper script also prints a per-run summary and keeps full make logs under `work/logs/`.
+
+Measured bus efficiency on the 64×32 validation frame: MM2S sustains approximately **88%** across tested `READY_PROB` settings. S2MM reaches approximately **86%** with no memory backpressure and scales with injected source-stall and backpressure conditions; remaining optimisation work is mainly reducing per-line and per-burst turnaround gaps on the write path.
 
 The async video paths preserve SOF metadata by packing `tuser` into the FIFO data word when crossing through the base `snix_axis_afifo`, which carries `tdata` and `tlast`.
 
-At the current Verilator 5.048/Yosys 0.66 checkpoint, the regression result is `89/89` simulation cases and `38/38` synthesis cases passing. Remaining VDMA production work includes longer-running asymmetric-rate stress tests, cleaner dedicated IRQ acknowledgement, richer AXI fault/status reporting, DDR-backed board integration, and larger-frame stress beyond the controlled simulation frames.
+At the current Verilator 5.048/Yosys 0.66 checkpoint, the regression result is `89/89` simulation cases and `38/38` synthesis cases passing. Remaining VDMA production work includes frame_delay=2 and park-mode test coverage, pixel-clock integration tests (pixel_clk ≠ axi_clk end-to-end), multi-stream arbiter front-end for temporal-flow applications, and KR260 board integration.
 
 For synthesis, `axis_afifo` is also available through the Makefile flow:
 

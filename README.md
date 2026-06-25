@@ -12,11 +12,11 @@ For a deeper walkthrough of the architecture, module inventory, register maps, a
 
 - ✅ AXI4, AXI-Lite, and AXI-Stream support
 - ✅ UART core, AXI-Lite GPIO, and UART↔AXI-Lite control-plane blocks
-- ✅ AXI DMA, CDMA, and initial AXI VDMA/video infrastructure
+- ✅ AXI DMA, CDMA, and AXI VDMA with triple-buffer frame store and genlock
 - ✅ AXI-Stream packet, beat, and weighted round-robin arbitration
 - ✅ AXI-Stream width converters — integer-ratio (k:1 up, 1:k down) and rational-ratio (e.g. 16↔24)
 - ✅ Synchronous and asynchronous AXI-Stream FIFOs
-- ✅ Video timing, RGB24 pack/unpack, video↔AXI-Stream adapters, and video CDC tests
+- ✅ Video pipeline: timing generator, colour-bar pattern, video↔AXI-Stream adapters, RGB24 pack/unpack, and capture/display CDC modules
 - ✅ Verilator-first (tested with FST + Surfer)
 - ✅ No UVM, no factory, no phases
 - ✅ Task-based drivers (`write`, `read`, `write_burst`, `read_burst`)
@@ -155,7 +155,60 @@ make run TESTNAME=cdma TESTTYPE=1 READY_PROB=80
 # DMA: 4KB boundary test
 make run TESTNAME=dma TESTTYPE=3 READY_PROB=80
 ```
-![Simulation Waveform](docs/dma.png)
+![DMA simulation waveform](docs/dma.png)
+
+### AXI Video DMA
+
+`snix_axi_vdma` is a full-frame scatter-gather DMA for progressive video. A capture engine (S2MM) writes incoming pixel data into AXI4 memory one frame at a time. A triple-buffer frame store rotates through three independent buffer slots and tracks which is newest. A playback engine (MM2S) reads frames back out over AXI4 and presents them on an AXI-Stream output. Software controls everything through a 16-register AXI-Lite CSR bank.
+
+![VDMA block diagram](docs/vdma.svg)
+
+Key features:
+- **Triple-buffer frame store** with automatic slot rotation, newest-frame tracking, and overwrite detection
+- **Genlock** — playback restarts only after a new capture frame completes, eliminating display tearing
+- **Frame delay** — configurable 0/1/2 frame pipeline lag between capture and playback
+- **Park mode** — lock MM2S to a fixed buffer slot for freeze-frame or diagnostic output
+- **Per-frame IRQ** with independent enables for S2MM done, MM2S done, and errors
+- **Telemetry counters** — saturating 4-bit counts for underrun, overwrite, and genlock sync-loss events
+- **AXI fault reporting** — sticky flags for non-OKAY BRESP/RRESP responses; failed-frame suppression prevents the slot from being published to the frame store
+
+```bash
+# VDMA: triple-buffer frame capture and playback with 70% AXI ready probability
+make run TESTNAME=vdma READY_PROB=70
+
+# Larger 64×32 validation profile across READY_PROB=100/70/50/30
+scripts/vdma_validate.sh
+```
+
+The validation profile enforces hard minimum throughput assertions on both paths. Measured on the 64×32 frame: MM2S sustains ~88% bus efficiency across tested `READY_PROB` settings; S2MM reaches ~86% with no memory backpressure and scales with injected source-stall conditions. Remaining optimisation work is mainly reducing per-line/burst turnaround gaps on the write path.
+
+![VDMA simulation waveform](docs/vdma_sim.png)
+
+### Video Infrastructure
+
+The video modules form a composable pipeline from pixel clock to AXI-Stream and back.
+
+![Video pipeline](docs/video_pipeline.svg)
+
+| Module                       | Role                                                                  |
+|------------------------------|-----------------------------------------------------------------------|
+| `snix_video_timing_gen`      | Horizontal/vertical counters, HSYNC, VSYNC, SOF, EOL                 |
+| `snix_video_pattern_gen`     | Eight-bar colour test pattern, combinational                          |
+| `snix_video_to_axis`         | Native video DE/SOF/EOL/data → AXI-Stream; detects overflow          |
+| `snix_axis_to_video`         | AXI-Stream → display timing window; detects underflow and frame errors|
+| `snix_video_rgb24_pack`      | 24-bit pixels → wide AXI beat (rational-ratio repacker)              |
+| `snix_video_rgb24_unpack`    | Wide AXI beat → 24-bit pixels (symmetric)                            |
+| `snix_video_capture_cdc`     | Pack + async FIFO CDC (pixel clock → AXI clock)                      |
+| `snix_video_display_cdc`     | Async FIFO CDC + unpack (AXI clock → display pixel clock)            |
+
+```bash
+make run TESTNAME=video_axis_loopback   # timing → pattern → to_axis → axis_to_video → check
+make run TESTNAME=video_fifo_loopback   # same path through sync FIFO
+make run TESTNAME=video_afifo_loopback  # same path through async FIFO / CDC
+make run TESTNAME=video_adapter_errors  # overflow, underflow, and frame_error flags
+make run TESTNAME=video_mode_clocks     # pixel-clock period checks for VGA/HD/FHD/UHD presets
+make run TESTNAME=video_rgb_cdc         # RGB24 pack/unpack across capture, AXI, and display clocks
+```
 
 ### Synthesis
 
