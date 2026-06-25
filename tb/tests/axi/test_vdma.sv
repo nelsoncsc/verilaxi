@@ -1,4 +1,11 @@
 `timescale 1ns/1ps
+//
+// stb_image integration (future):
+//   - DPI task load_image_file(string path, output int w, h, output byte data[])
+//   - Uses stb_image.h (public domain) compiled into sim_main.cpp or a helper .cpp
+//   - Feeds real image pixels into send_frame_rect_bp for capture validation
+//   - Enables visual regression: capture->VDMA memory->playback, compare to golden
+//   - Requires: tb_cpp/stb_image_dpi.cpp, +incdir+tb_cpp in filelist
 
 module test_vdma #(
     parameter int ADDR_WIDTH = 32,
@@ -34,7 +41,17 @@ module test_vdma #(
     localparam int VALID_BASE_ADDR = 32'h0000_8000;
     localparam int VALID_HSIZE_BYTES = VALID_WIDTH_PIXELS * BYTES_PER_PIXEL;
     localparam int VALID_STRIDE_BYTES = 1024;
-    localparam int MEM_DEPTH = 16384;
+    localparam int VGA_STRESS_WIDTH_PIXELS = 640;
+    localparam int VGA_STRESS_HEIGHT_LINES = 480;
+    localparam int VGA_STRESS_BASE_ADDR = 32'h0010_0000;
+    localparam int VGA_STRESS_HSIZE_BYTES = VGA_STRESS_WIDTH_PIXELS * BYTES_PER_PIXEL;
+    localparam int VGA_STRESS_STRIDE_BYTES = 5120;
+    localparam int FHD_STRESS_WIDTH_PIXELS = 1920;
+    localparam int FHD_STRESS_HEIGHT_LINES = 1080;
+    localparam int FHD_STRESS_BASE_ADDR = 32'h0020_0000;
+    localparam int FHD_STRESS_HSIZE_BYTES = FHD_STRESS_WIDTH_PIXELS * BYTES_PER_PIXEL;
+    localparam int FHD_STRESS_STRIDE_BYTES = 15360;
+    localparam int MEM_DEPTH = 2359296;
     localparam int AXIL_ADDR_WIDTH = 32;
     localparam int AXIL_DATA_WIDTH = 32;
 
@@ -61,6 +78,8 @@ module test_vdma #(
     logic [2:0] valid_slots;
     int ready_prob_cfg;
     int vdma_validate_cfg;
+    int vdma_stress_cfg;
+    int check_throughput_cfg;
 
     axi_slave #(
         .ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH),
@@ -101,6 +120,28 @@ module test_vdma #(
         if (ready_prob >= 50)
             return 75;
         return ready_prob + 20;
+    endfunction
+
+    function automatic int validation_s2mm_min_throughput_pct(input int ready_prob);
+        // The validation profile deliberately adds source-side gaps to the
+        // larger frame, so this floor is lower than the no-stream-stall
+        // throughput smoke while still catching accidental severe idling.
+        if (ready_prob >= 90)
+            return 80;
+        if (ready_prob >= 70)
+            return 60;
+        if (ready_prob >= 50)
+            return 40;
+        return ready_prob - 5;
+    endfunction
+
+    function automatic int validation_mm2s_min_throughput_pct(input int ready_prob);
+        // The read side has deterministic sink stalls in the validation
+        // profile; memory ready backpressure is mostly hidden by MM2S
+        // prefetching, so keep this floor high across READY_PROB settings.
+        if (ready_prob >= 50)
+            return 80;
+        return 75;
     endfunction
 
     snix_axi_vdma #(
@@ -595,6 +636,79 @@ module test_vdma #(
         playback_axis.tready = 1'b0;
     endtask
 
+    task automatic run_vdma_stress_profile(
+        input int stress_level,
+        input int frame_count,
+        input int base_addr,
+        input int width_pixels,
+        input int height_lines,
+        input int hsize_bytes,
+        input int stride_bytes
+    );
+        int wr_beats;
+        int wr_cycles;
+        int rd_beats;
+        int rd_cycles;
+        int frame_id;
+        int wr_pct;
+        int rd_pct;
+        int min_wr_pct;
+        int min_rd_pct;
+
+        axil_m.write(VDMA_FRAME_CTRL, 32'h0);
+        configure_write_custom(base_addr, stride_bytes, hsize_bytes, height_lines);
+        configure_read_custom(base_addr, stride_bytes, hsize_bytes, height_lines);
+
+        for (int frame = 0; frame < frame_count; frame++) begin
+            frame_id = 100 + stress_level * 10 + frame;
+            poison_frame_region(base_addr, stride_bytes, height_lines);
+
+            axil_m.write(VDMA_WR_CTRL,
+                         vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
+            fork
+                send_frame_rect_count(frame_id, width_pixels, height_lines,
+                                      wr_beats, wr_cycles);
+                wait (wr_done);
+            join
+            assert (!wr_error)
+                else $fatal(1, "VDMA stress capture failed level=%0d frame=%0d",
+                            stress_level, frame_id);
+            check_stride_padding(base_addr, width_pixels, stride_bytes,
+                                 height_lines);
+
+            axil_m.write(VDMA_RD_CTRL,
+                         vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
+            fork
+                receive_frame_rect_count(frame_id, width_pixels, height_lines,
+                                         rd_beats, rd_cycles);
+                wait (rd_done);
+            join
+            assert (!rd_error)
+                else $fatal(1, "VDMA stress playback failed level=%0d frame=%0d",
+                            stress_level, frame_id);
+
+            wr_pct = wr_beats * 100 / wr_cycles;
+            rd_pct = rd_beats * 100 / rd_cycles;
+            min_wr_pct = 80;
+            min_rd_pct = 90;
+            $display("[VDMA STRESS%0d] frame=%0d %0dx%0d wr=%0d/%0d %0d%% rd=%0d/%0d %0d%% padding-ok",
+                     stress_level, frame_id, width_pixels, height_lines,
+                     wr_beats, wr_cycles, wr_pct,
+                     rd_beats, rd_cycles, rd_pct);
+
+            if (check_throughput_cfg != 0) begin
+                assert (wr_pct >= min_wr_pct)
+                    else $fatal(1,
+                        "VDMA stress S2MM throughput low level=%0d pct=%0d min=%0d",
+                        stress_level, wr_pct, min_wr_pct);
+                assert (rd_pct >= min_rd_pct)
+                    else $fatal(1,
+                        "VDMA stress MM2S throughput low level=%0d pct=%0d min=%0d",
+                        stress_level, rd_pct, min_rd_pct);
+            end
+        end
+    endtask
+
     initial begin
         capture_axis.tdata  = '0;
         capture_axis.tuser  = '0;
@@ -611,8 +725,12 @@ module test_vdma #(
         mem_slave.reset();
         ready_prob_cfg = 100;
         vdma_validate_cfg = 0;
+        vdma_stress_cfg = 0;
+        check_throughput_cfg = 0;
         void'($value$plusargs("READY_PROB=%d", ready_prob_cfg));
         void'($value$plusargs("VDMA_VALIDATE=%d", vdma_validate_cfg));
+        void'($value$plusargs("VDMA_STRESS=%d", vdma_stress_cfg));
+        void'($value$plusargs("CHECK_THROUGHPUT=%d", check_throughput_cfg));
         for (int i = 0; i < MEM_DEPTH; i++)
             mem_slave.mem[i] = '0;
 
@@ -736,6 +854,69 @@ module test_vdma #(
         end
         $display("[VDMA] capture-driven genlock with one-frame delay passed");
 
+        // Capture-driven genlock with zero-frame delay. The read side must
+        // follow the just-published newest slot.
+        axil_m.write(VDMA_IRQ_ACK,
+                     vdma_irq_ack_word(1'b1, 1'b0, 1'b0));
+        axil_m.write(VDMA_FRAME_CTRL,
+                     vdma_frame_policy_word(1'b1, 1'b0, 2'd0,
+                                            1'b1, 2'd0,
+                                            1'b1, 1'b1, 1'b1, 1'b0));
+        axil_m.write(VDMA_WR_CTRL,
+                     vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd3));
+        fork
+            send_frame_id(4);
+            receive_frame_id(4);
+        join
+        wait (rd_done);
+        @(posedge clk);
+        @(negedge clk);
+        assert (read_slot == 2'd1 && newest_complete_slot == 2'd1)
+            else $fatal(1, "VDMA delay=0 genlock mismatch read=%0d newest=%0d",
+                        read_slot, newest_complete_slot);
+        $display("[VDMA] capture-driven genlock with zero-frame delay passed");
+
+        // Capture-driven genlock with two-frame delay. With slots containing
+        // frame3/4/5 after this write, the delayed read must return frame 3.
+        axil_m.write(VDMA_IRQ_ACK,
+                     vdma_irq_ack_word(1'b1, 1'b0, 1'b0));
+        axil_m.write(VDMA_FRAME_CTRL,
+                     vdma_frame_policy_word(1'b1, 1'b0, 2'd0,
+                                            1'b1, 2'd2,
+                                            1'b1, 1'b1, 1'b1, 1'b0));
+        axil_m.write(VDMA_WR_CTRL,
+                     vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd3));
+        fork
+            send_frame_id(5);
+            receive_frame_id(3);
+        join
+        wait (rd_done);
+        @(posedge clk);
+        @(negedge clk);
+        assert (read_slot == 2'd0 && newest_complete_slot == 2'd2)
+            else $fatal(1, "VDMA delay=2 genlock mismatch read=%0d newest=%0d",
+                        read_slot, newest_complete_slot);
+        $display("[VDMA] capture-driven genlock with two-frame delay passed");
+
+        // Park mode overrides the delay/newest policy and reads a fixed valid
+        // slot. Slot 1 still contains frame 4 from the delay=0 test.
+        axil_m.write(VDMA_IRQ_ACK,
+                     vdma_irq_ack_word(1'b1, 1'b0, 1'b0));
+        axil_m.write(VDMA_FRAME_CTRL,
+                     vdma_frame_policy_word(1'b1, 1'b1, 2'd1,
+                                            1'b0, 2'd0,
+                                            1'b1, 1'b1, 1'b1, 1'b0));
+        axil_m.write(VDMA_RD_CTRL,
+                     vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd3));
+        receive_frame_id(4);
+        wait (rd_done);
+        @(posedge clk);
+        @(negedge clk);
+        assert (read_slot == 2'd1)
+            else $fatal(1, "VDMA park mode read wrong slot: read=%0d",
+                        read_slot);
+        $display("[VDMA] park-mode fixed-slot playback passed");
+
         // Return to free-run policy for the circular restart stress below.
         axil_m.write(VDMA_FRAME_CTRL,
                      vdma_frame_policy_word(1'b1, 1'b0, 2'd0,
@@ -744,24 +925,38 @@ module test_vdma #(
 
         // Inject a write response failure. A failed capture must raise status
         // and IRQ, invalidate its destination, and never publish/advance it.
-        force axi_mem.bresp = 2'b10;
-        axil_m.write(VDMA_WR_CTRL,
-                     vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd3));
-        fork
-            send_frame_id(6);
-            wait (wr_done);
-        join
-        release axi_mem.bresp;
-        axi_mem.bresp = 2'b00;
-        @(posedge clk);
-        @(negedge clk);
-        assert (wr_axi_error && wr_error && irq)
-            else $fatal(1, "VDMA failed to report injected BRESP error");
-        assert (newest_complete_slot == 2'd0 && write_slot == 2'd1 &&
-                !valid_slots[1])
-            else $fatal(1, "VDMA published or advanced failed capture");
         begin
+            logic [1:0] newest_before;
+            logic [1:0] write_slot_before;
+            logic [2:0] valid_before;
+            logic [2:0] valid_after_start;
             logic [31:0] status;
+
+            newest_before     = newest_complete_slot;
+            write_slot_before = write_slot;
+            valid_before      = valid_slots;
+            valid_after_start = valid_before & ~(3'b001 << write_slot_before);
+
+            force axi_mem.bresp = 2'b10;
+            axil_m.write(VDMA_WR_CTRL,
+                         vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd3));
+            fork
+                send_frame_id(6);
+                wait (wr_done);
+            join
+            release axi_mem.bresp;
+            axi_mem.bresp = 2'b00;
+            @(posedge clk);
+            @(negedge clk);
+            assert (wr_axi_error && wr_error && irq)
+                else $fatal(1, "VDMA failed to report injected BRESP error");
+            assert (newest_complete_slot == newest_before &&
+                    write_slot == write_slot_before &&
+                    valid_slots == valid_after_start)
+                else $fatal(1, "VDMA published or advanced failed capture: newest=%0d/%0d write=%0d/%0d valid=%b/%b",
+                            newest_complete_slot, newest_before,
+                            write_slot, write_slot_before,
+                            valid_slots, valid_after_start);
             axil_m.read(VDMA_STATUS, status);
             assert (status[6] && status[4] && status[8])
                 else $fatal(1, "VDMA BRESP status mismatch: %h", status);
@@ -772,7 +967,7 @@ module test_vdma #(
         force axi_mem.rresp = 2'b10;
         axil_m.write(VDMA_RD_CTRL,
                      vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd3));
-        receive_frame_id(3);
+        receive_frame_id(5);
         wait (rd_done);
         release axi_mem.rresp;
         axi_mem.rresp = 2'b00;
@@ -1004,6 +1199,8 @@ module test_vdma #(
             int wr_cycles;
             int rd_beats;
             int rd_cycles;
+            int wr_min_pct;
+            int rd_min_pct;
             int frame_id;
 
             frame_id = 90;
@@ -1027,6 +1224,12 @@ module test_vdma #(
                 else $fatal(1, "VDMA validation capture failed");
             check_stride_padding(VALID_BASE_ADDR, VALID_WIDTH_PIXELS,
                                  VALID_STRIDE_BYTES, VALID_HEIGHT_LINES);
+            wr_min_pct = validation_s2mm_min_throughput_pct(ready_prob_cfg);
+            assert ((wr_beats * 100 / wr_cycles) >= wr_min_pct)
+                else $fatal(1,
+                    "VDMA validation S2MM throughput too low: beats=%0d cycles=%0d pct=%0d min=%0d ready_prob=%0d",
+                    wr_beats, wr_cycles, wr_beats * 100 / wr_cycles,
+                    wr_min_pct, ready_prob_cfg);
 
             axil_m.write(VDMA_RD_CTRL,
                          vdma_ctrl_word(1'b1, 1'b0, 3'd3, 8'd15));
@@ -1042,10 +1245,18 @@ module test_vdma #(
                     rd_beats == VALID_WIDTH_PIXELS * VALID_HEIGHT_LINES)
                 else $fatal(1, "VDMA validation beat accounting mismatch wr=%0d rd=%0d",
                             wr_beats, rd_beats);
-            $display("[VDMA VALIDATION] frame=%0d %0dx%0d wr=%0d/%0d %0d%% rd=%0d/%0d %0d%% padding-ok ready_prob=%0d",
+            rd_min_pct = validation_mm2s_min_throughput_pct(ready_prob_cfg);
+            assert ((rd_beats * 100 / rd_cycles) >= rd_min_pct)
+                else $fatal(1,
+                    "VDMA validation MM2S throughput too low: beats=%0d cycles=%0d pct=%0d min=%0d ready_prob=%0d",
+                    rd_beats, rd_cycles, rd_beats * 100 / rd_cycles,
+                    rd_min_pct, ready_prob_cfg);
+            $display("[VDMA VALIDATION] frame=%0d %0dx%0d wr=%0d/%0d %0d%% min=%0d%% rd=%0d/%0d %0d%% min=%0d%% padding-ok ready_prob=%0d",
                      frame_id, VALID_WIDTH_PIXELS, VALID_HEIGHT_LINES,
                      wr_beats, wr_cycles, wr_beats * 100 / wr_cycles,
+                     wr_min_pct,
                      rd_beats, rd_cycles, rd_beats * 100 / rd_cycles,
+                     rd_min_pct,
                      ready_prob_cfg);
         end
 
@@ -1089,15 +1300,38 @@ module test_vdma #(
                         newest_complete_slot, write_slot);
         $display("[VDMA] circular writer auto-restart passed for two frames");
 
+        if (vdma_stress_cfg >= 1) begin
+            run_vdma_stress_profile(1, 1, VGA_STRESS_BASE_ADDR,
+                                    VGA_STRESS_WIDTH_PIXELS,
+                                    VGA_STRESS_HEIGHT_LINES,
+                                    VGA_STRESS_HSIZE_BYTES,
+                                    VGA_STRESS_STRIDE_BYTES);
+        end
+
+        if (vdma_stress_cfg >= 2) begin
+            run_vdma_stress_profile(2, 1, FHD_STRESS_BASE_ADDR,
+                                    FHD_STRESS_WIDTH_PIXELS,
+                                    FHD_STRESS_HEIGHT_LINES,
+                                    FHD_STRESS_HSIZE_BYTES,
+                                    FHD_STRESS_STRIDE_BYTES);
+        end
+
         $finish;
     end
 
     initial begin
         int validate_timeout;
+        int stress_timeout;
 
         validate_timeout = 0;
+        stress_timeout = 0;
         void'($value$plusargs("VDMA_VALIDATE=%d", validate_timeout));
-        if (validate_timeout != 0) begin
+        void'($value$plusargs("VDMA_STRESS=%d", stress_timeout));
+        if (stress_timeout >= 2) begin
+            #120_000_000;
+        end else if (stress_timeout >= 1) begin
+            #30_000_000;
+        end else if (validate_timeout != 0) begin
             #200_000;
         end else begin
             #20_000;
