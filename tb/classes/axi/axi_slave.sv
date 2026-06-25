@@ -46,6 +46,7 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
         // 100 = always ready (no backpressure). Set before calling run(), or
         // override via +READY_PROB=N plusarg.
         int ready_prob = 100;
+        bit verbose = 1'b0;
 
         function new(virtual axi4_if.slave axi_vif, string obj_name = "axi_slave");
             this.vif  = axi_vif;
@@ -87,6 +88,7 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
         // --------------------------------------------------
         task run();
             void'($value$plusargs("READY_PROB=%d", ready_prob));
+            void'($value$plusargs("AXI_SLAVE_VERBOSE=%d", verbose));
             forever @(posedge vif.ACLK) begin
                 // -----------------------------
                 // WRITE ADDRESS CHANNEL (AW)
@@ -97,7 +99,9 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
 
                 // Only claim a new write transaction if none is active
                 if (vif.awvalid && !aw_seen_high && wr_beats_left == 0 && rand_ready()) begin
-                    $info("%s: run: AW received, addr=%h, len=%0d, size=%d", this.name, vif.awaddr, vif.awlen, vif.awsize);
+                    if (verbose) begin
+                        $info("%s: run: AW received, addr=%h, len=%0d, size=%d", this.name, vif.awaddr, vif.awlen, vif.awsize);
+                    end
                     wr_addr       = vif.awaddr;
                     wr_beats_left = int'(vif.awlen) + 1;
                     wr_size       = vif.awsize;
@@ -129,8 +133,10 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     // Merge write data into memory
                     mem[mem_index] = (mem[mem_index] & ~mask) | ((vif.wdata << (byte_offset*8)) & mask);
 
-                    $info("%s, writing %0d bytes @0x%h -> mem[%0d]=%h, wlast=%b",
-                        this.name, bytes_per_beat, wr_addr, mem_index, mem[mem_index], vif.wlast);
+                    if (verbose) begin
+                        $info("%s, writing %0d bytes @0x%h -> mem[%0d]=%h, wlast=%b",
+                            this.name, bytes_per_beat, wr_addr, mem_index, mem[mem_index], vif.wlast);
+                    end
 
                     // Increment address
                     wr_addr = wr_addr + bytes_per_beat;
@@ -144,7 +150,9 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                         end
                         wr_beats_left   = 0;
                         wr_resp_pending = 1;
-                        $info("%s: WLAST detected, wr_resp_pending=1", this.name);
+                        if (verbose) begin
+                            $info("%s: WLAST detected, wr_resp_pending=1", this.name);
+                        end
                     end else begin
                         wr_beats_left = wr_beats_left - 1;
                     end
@@ -158,12 +166,16 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     vif.bid    <= wr_id;
                     vif.bresp  <= 2'b00;
                     vif.bvalid <= 1;
-                    $info("%s: run: Driving BVALID, bid=%0d", this.name, wr_id);
+                    if (verbose) begin
+                        $info("%s: run: Driving BVALID, bid=%0d", this.name, wr_id);
+                    end
                 end 
                 else if (vif.bvalid && vif.bready) begin
                     vif.bvalid      <= 0;
                     wr_resp_pending = 0;
-                    $info("%s: run: B handshake complete, clearing BVALID", this.name);
+                    if (verbose) begin
+                        $info("%s: run: B handshake complete, clearing BVALID", this.name);
+                    end
                 end
 
                 // -----------------------------
@@ -181,8 +193,10 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                     ar_seen_high  = 1'b1;
                     vif.arready   <= 1;
 
-                    $info("%s: AR accepted addr=0x%h len=%0d size=%0d id=%0d",
-                        this.name, vif.araddr, vif.arlen, vif.arsize, vif.arid);
+                    if (verbose) begin
+                        $info("%s: AR accepted addr=0x%h len=%0d size=%0d id=%0d",
+                            this.name, vif.araddr, vif.arlen, vif.arsize, vif.arid);
+                    end
                 end
                 else begin
                     vif.arready <= 0;
@@ -233,9 +247,11 @@ class axi_slave #(parameter int ADDR_WIDTH = 32,
                         vif.rlast  <= (rd_beats_left == 1);
                         vif.rvalid <= 1;
 
-                        $info("%s: READ beat addr=0x%h data=%h beats_left=%0d last=%b",
-                            this.name, rd_addr, rd_data,
-                            rd_beats_left, (rd_beats_left == 1));
+                        if (verbose) begin
+                            $info("%s: READ beat addr=0x%h data=%h beats_left=%0d last=%b",
+                                this.name, rd_addr, rd_data,
+                                rd_beats_left, (rd_beats_left == 1));
+                        end
                     end
                 end
 
