@@ -238,22 +238,27 @@ module axi_mm_checker #(
     // =========================================================================
     // Rule 7 — RLAST alignment with ARLEN
     //   R burst must contain exactly ARLEN+1 beats.
+    //   Uses a FIFO of captured ARLENs to handle pipelined (outstanding) reads
+    //   where a second AR can be accepted before the first burst's RLAST fires.
     // =========================================================================
     logic [7:0] r_beat_cnt;
-    logic [7:0] ar_len_cap;
+    logic [7:0] ar_len_q[$];
 
     always @(posedge clk) begin
         if (!rst_n) begin
             r_beat_cnt <= '0;
-            ar_len_cap <= '0;
+            ar_len_q   = {};
         end else begin
             if (arvalid && arready)
-                ar_len_cap <= arlen;
+                ar_len_q.push_back(arlen);
             if (rvalid && rready) begin
                 if (rlast) begin
-                    assert (r_beat_cnt == ar_len_cap)
-                        else $error("%s: RLAST at beat %0d, ARLEN=%0d (expected %0d beats)",
-                                    LABEL, r_beat_cnt, ar_len_cap, ar_len_cap + 8'd1);
+                    if (ar_len_q.size() > 0) begin
+                        automatic logic [7:0] expected = ar_len_q.pop_front();
+                        assert (r_beat_cnt == expected)
+                            else $error("%s: RLAST at beat %0d, ARLEN=%0d (expected %0d beats)",
+                                        LABEL, r_beat_cnt, expected, expected + 8'd1);
+                    end
                     r_beat_cnt <= '0;
                 end else begin
                     r_beat_cnt <= r_beat_cnt + 8'd1;
