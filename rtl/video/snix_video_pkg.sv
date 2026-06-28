@@ -61,6 +61,11 @@ package snix_video_pkg;
         32'd32, 32'd4, 32'd4, 32'd4
     };
 
+    localparam video_timing_t TEST_64x48 = {
+        32'd64, 32'd8, 32'd8, 32'd8,
+        32'd48, 32'd4, 32'd4, 32'd4
+    };
+
     localparam video_timing_t VGA_640x480 = {
         32'd640, 32'd16, 32'd96, 32'd48,
         32'd480, 32'd10, 32'd2, 32'd33

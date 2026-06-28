@@ -18,10 +18,15 @@ module test_vdma_timing #(
     import axi_pkg::*;
     import axi_vdma_pkg::*;
 
-`ifdef VIDEO_VALIDATE
+`ifdef VIDEO_PNG
+    localparam snix_video_pkg::video_timing_t TIMING = snix_video_pkg::TEST_64x48;
+    localparam int FRAMES_TO_RUN = 6;
+`elsif VIDEO_VALIDATE
     localparam snix_video_pkg::video_timing_t TIMING = snix_video_pkg::TEST_32x16;
+    localparam int FRAMES_TO_RUN = 4;
 `else
     localparam snix_video_pkg::video_timing_t TIMING = snix_video_pkg::TEST_8x4;
+    localparam int FRAMES_TO_RUN = 4;
 `endif
 
     localparam int H_ACTIVE      = TIMING.h_active;
@@ -37,7 +42,6 @@ module test_vdma_timing #(
     localparam int CDC_FIFO_DEPTH = 64;
     localparam int AXIL_ADDR_WIDTH = 32;
     localparam int AXIL_DATA_WIDTH = 32;
-    localparam int FRAMES_TO_RUN = 4;
 
     // -----------------------------------------------------------------
     // Pixel / display clock domains (74.25 MHz, independent phases)
@@ -99,6 +103,36 @@ module test_vdma_timing #(
     logic [0:0]  raw_tuser;
     logic        raw_tlast, raw_tvalid, raw_tready_unused;
 
+    // PNG source mux — pixel_clk domain counters + combinational DPI override
+    logic [23:0] src_pixel_muxed;
+    int          png_src_col, png_src_row, png_src_frame;
+
+    always_ff @(posedge pixel_clk or negedge pixel_rst_n) begin
+        if (!pixel_rst_n) begin
+            png_src_col   <= 0;
+            png_src_row   <= 0;
+            png_src_frame <= 0;
+        end else if (src_de) begin
+            if (png_src_col == H_ACTIVE - 1) begin
+                png_src_col <= 0;
+                if (png_src_row == V_ACTIVE - 1) begin
+                    png_src_row   <= 0;
+                    png_src_frame <= png_src_frame + 1;
+                end else png_src_row <= png_src_row + 1;
+            end else png_src_col <= png_src_col + 1;
+        end
+    end
+
+    always_comb begin
+        if (png_src_enabled)
+            src_pixel_muxed = 24'(vf_src_get_pixel(
+                png_src_frame * H_ACTIVE * V_ACTIVE +
+                png_src_row   * H_ACTIVE +
+                png_src_col));
+        else
+            src_pixel_muxed = src_pixel;
+    end
+
     // Buffered 24-bit stream (after sync FIFO that absorbs rr_converter DRAIN stalls)
     logic [23:0] buf_tdata;
     logic [0:0]  buf_tuser;
@@ -124,7 +158,7 @@ module test_vdma_timing #(
     snix_video_to_axis #(.DATA_WIDTH(24), .USER_WIDTH(1)) u_to_axis (
         .clk(pixel_clk), .rst_n(pixel_rst_n),
         .video_de(src_de), .video_sof(src_sof), .video_eol(src_eol),
-        .video_data(src_pixel),
+        .video_data(src_pixel_muxed),
         .m_axis_tdata(raw_tdata), .m_axis_tuser(raw_tuser),
         .m_axis_tlast(raw_tlast), .m_axis_tvalid(raw_tvalid),
         .m_axis_tready(raw_tready_unused), .overflow(cap_overflow)
@@ -305,12 +339,18 @@ module test_vdma_timing #(
     );
 
     // -----------------------------------------------------------------
-    // Pixel checker + frame sink (display_clk domain)
-    // Frame sink: activate with +PNG_SINK_PREFIX=<path> — writes one PNG
-    // per frame.  Inline here (not as a submodule) so the DPI calls fire
-    // in the same always_ff evaluation as the checker, which sees correct
-    // post-NBA values of disp_tdata/disp_tvalid after display_cdc updates.
+    // Pixel checker + frame source/sink (display_clk domain)
+    // Source: activate with +PNG_SRC_DIR=<dir> (VIDEO_PNG mode only).
+    //         Loads frame_00.png .. frame_05.png and drives exp_pix from them.
+    // Sink:   activate with +PNG_SINK_PREFIX=<path> — writes one PNG per frame.
+    // Both are inlined here (not submodules) for correct Verilator eval order.
     // -----------------------------------------------------------------
+    import "DPI-C" function void vf_src_load(input string path);
+    import "DPI-C" function void vf_src_load_append(input string path);
+    import "DPI-C" function int  vf_src_get_pixel(input int idx);
+    import "DPI-C" function int  vf_src_width();
+    import "DPI-C" function int  vf_src_height();
+    import "DPI-C" function int  vf_src_total_pixels();
     import "DPI-C" function void vf_sink_push(input int rgb24);
     import "DPI-C" function void vf_sink_write(input string path,
                                                input int    width,
@@ -322,9 +362,34 @@ module test_vdma_timing #(
     int          disp_row;
     string       png_prefix;
     bit          png_enabled;
+    bit          png_src_enabled;
 
     initial begin
         png_enabled = $value$plusargs("PNG_SINK_PREFIX=%s", png_prefix);
+        png_src_enabled = 0;
+`ifdef VIDEO_PNG
+        begin
+            string src_dir;
+            if ($value$plusargs("PNG_SRC_DIR=%s", src_dir)) begin
+                automatic string p;
+                $sformat(p, "%s/frame_00.png", src_dir); vf_src_load(p);
+                $sformat(p, "%s/frame_01.png", src_dir); vf_src_load_append(p);
+                $sformat(p, "%s/frame_02.png", src_dir); vf_src_load_append(p);
+                $sformat(p, "%s/frame_03.png", src_dir); vf_src_load_append(p);
+                $sformat(p, "%s/frame_04.png", src_dir); vf_src_load_append(p);
+                $sformat(p, "%s/frame_05.png", src_dir); vf_src_load_append(p);
+                if (vf_src_width() != H_ACTIVE || vf_src_height() != V_ACTIVE ||
+                    vf_src_total_pixels() != FRAMES_TO_RUN * H_ACTIVE * V_ACTIVE) begin
+                    $fatal(1,
+                           "[VDMA_TIMING] PNG source mismatch: got %0dx%0d total=%0d, expected %0dx%0d total=%0d from %s",
+                           vf_src_width(), vf_src_height(), vf_src_total_pixels(),
+                           H_ACTIVE, V_ACTIVE, FRAMES_TO_RUN * H_ACTIVE * V_ACTIVE, src_dir);
+                end
+                png_src_enabled = 1;
+                $display("[VDMA_TIMING] PNG source: loaded 6 frames from %s", src_dir);
+            end
+        end
+`endif
     end
 
     function automatic logic [23:0] expected_pixel(input int x);
@@ -352,7 +417,12 @@ module test_vdma_timing #(
             logic [23:0] exp_pix;
             logic        exp_sof;
             logic        exp_eol;
-            exp_pix = expected_pixel(disp_col);
+            if (png_src_enabled)
+                exp_pix = 24'(vf_src_get_pixel(
+                    display_frames_done * H_ACTIVE * V_ACTIVE +
+                    disp_row * H_ACTIVE + disp_col));
+            else
+                exp_pix = expected_pixel(disp_col);
             exp_sof = (disp_col == 0) && (disp_row == 0);
             exp_eol = (disp_col == H_ACTIVE - 1);
 

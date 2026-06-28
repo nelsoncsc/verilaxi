@@ -6,12 +6,10 @@
 // The prefix is set via +PNG_SINK_PREFIX=<path> at runtime; if absent the
 // module is silent (no files written).
 //
-// Sampling note: this is a TB-only monitor.  It samples on the FALLING edge
-// of clk so that all posedge NBA updates and combinational re-evaluations
-// (including any rr_converter tvalid/tdata paths) are fully settled before
-// the DPI calls are made.  This avoids Verilator evaluation-order issues that
-// arise when a submodule monitor samples posedge signals whose combinational
-// drivers are updated by sibling submodule NBA writes in the same time step.
+// Sampling note: this is a TB-only monitor.  The Verilator timing-aware tests
+// inline the DPI calls beside their pixel checkers, which avoids cross-module
+// scheduler ordering surprises.  This reusable helper is kept for event-driven
+// simulators and simple monitor-only use.
 module video_frame_sink #(
     parameter int H_ACTIVE = 8,
     parameter int V_ACTIVE = 4
@@ -39,13 +37,6 @@ module video_frame_sink #(
             enabled = 1;
     end
 
-    // VERILATOR NOTE: Verilator's --timing coroutine scheduler does not
-    // reliably invoke this block from a submodule context after sibling
-    // submodule NBA updates have propagated through combinational logic
-    // (e.g. rr_converter m_axis_tvalid = (state==DRAIN) and m_axis_tdata).
-    // When using Verilator, inline the DPI calls directly in the test module
-    // alongside the pixel checker always_ff, which is evaluated in the correct
-    // post-NBA context.  This module works correctly in VCS/Questa/Xsim.
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             col       <= 0;

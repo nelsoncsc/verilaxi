@@ -21,6 +21,9 @@ module video_frame_source #(
 );
     import "DPI-C" function void vf_src_load(input string path);
     import "DPI-C" function int  vf_src_get_pixel(input int idx);
+    import "DPI-C" function int  vf_src_width();
+    import "DPI-C" function int  vf_src_height();
+    import "DPI-C" function int  vf_src_total_pixels();
 
     int col, row, frame_num;
     bit loaded;
@@ -31,6 +34,12 @@ module video_frame_source #(
         loaded = 0;
         if ($value$plusargs("PNG_SRC=%s", png_path)) begin
             vf_src_load(png_path);
+            if (vf_src_total_pixels() == 0)
+                $fatal(1, "[VIDEO_FRAME_SOURCE] failed to load PNG_SRC=%s", png_path);
+            if (vf_src_width() != H_ACTIVE || vf_src_height() != V_ACTIVE)
+                $fatal(1,
+                       "[VIDEO_FRAME_SOURCE] PNG_SRC dimension mismatch: got %0dx%0d, expected %0dx%0d (%s)",
+                       vf_src_width(), vf_src_height(), H_ACTIVE, V_ACTIVE, png_path);
             loaded = 1;
         end
     end
