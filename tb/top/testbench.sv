@@ -57,6 +57,10 @@ module testbench;
         test_vdma_timing test_vdma_timing_u0 (.clk   (clk),
                                               .rst_n (rst_n)
                                              );
+    `elsif USE_MULTI_VDMA_TEST
+        test_multi_vdma test_multi_vdma_u0 (.clk   (clk),
+                                            .rst_n (rst_n)
+                                           );
     `elsif USE_AXIS_AFIFO
         test_axis_afifo test_axis_afifo_u0 (.clk   (clk),
                                             .rst_n (rst_n)

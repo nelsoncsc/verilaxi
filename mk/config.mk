@@ -11,10 +11,12 @@ OBJ_DIR    ?= obj_dir
 LOG_DIR    := $(WORK_DIR)/logs
 WAVE_DIR   := $(WORK_DIR)/waves
 
+MULTI_VDMA_TAPS ?= 2
+
 FILELIST_COMMON := filelists/common.f
 FILELIST_TB     := filelists/tb_top.f
 
-VALID_TESTS := axis_register uart_lite axis_fifo axis_afifo axis_arbiter axis_arbiter_beat axis_arbiter_weighted axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer video_axis_loopback video_fifo_loopback video_afifo_loopback video_adapter_errors video_mode_clocks video_rgb_cdc video_rgb32 video_csc_rgb_ycbcr video_csc_422 dma vdma vdma_timing axil_register axil_gpio uart_axil_slave uart_axil_master cdma
+VALID_TESTS := axis_register uart_lite axis_fifo axis_afifo axis_arbiter axis_arbiter_beat axis_arbiter_weighted axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer video_axis_loopback video_fifo_loopback video_afifo_loopback video_adapter_errors video_mode_clocks video_rgb_cdc video_rgb32 video_csc_rgb_ycbcr video_csc_422 dma vdma vdma_timing multi_vdma axil_register axil_gpio uart_axil_slave uart_axil_master cdma
 TESTNAME    ?= axis_register
 
 SRC_BP      ?=
@@ -24,11 +26,16 @@ READY_PROB  ?=
 FRAME_FIFO  ?=
 VDMA_VALIDATE ?=
 VIDEO_VALIDATE ?=
+VIDEO_PNG ?=
 VDMA_STRESS ?=
 CHECK_THROUGHPUT ?=
 AXI_SLAVE_VERBOSE ?=
 PNG_SRC ?=
+PNG_SRC_DIR ?=
 PNG_SINK_PREFIX ?=
+MVDMA_PNG_DIR ?=
+MVDMA_PNG_SRC_DIR ?=
+MVDMA_PNG_OUT_DIR ?=
 
 AXIS_SRC_BP_VAL   := $(if $(SRC_BP),$(SRC_BP),0)
 AXIS_SINK_BP_VAL  := $(if $(SINK_BP),$(SINK_BP),0)
@@ -40,6 +47,9 @@ READY_PROB_VAL    := $(if $(READY_PROB),$(READY_PROB),100)
 VDMA_VALIDATE_TAG := $(if $(VDMA_VALIDATE),_val$(VDMA_VALIDATE),)
 VIDEO_VALIDATE_TAG := $(if $(VIDEO_VALIDATE),_val$(VIDEO_VALIDATE),)
 VDMA_STRESS_TAG := $(if $(VDMA_STRESS),_stress$(VDMA_STRESS),)
+MVDMA_STRESS_TAG := $(if $(MVDMA_STRESS),_stress$(MVDMA_STRESS),)
+MVDMA_SEED_TAG := $(if $(MVDMA_SEED),_seed$(MVDMA_SEED),)
+MVDMA_ITERS_TAG := $(if $(MVDMA_ITERS),_iters$(MVDMA_ITERS),)
 
 ifeq ($(TESTNAME),axis_register)
   RUN_TAG := $(TESTNAME)_src$(AXIS_SRC_BP_VAL)_sink$(AXIS_SINK_BP_VAL)
@@ -89,6 +99,8 @@ else ifeq ($(TESTNAME),vdma)
   RUN_TAG := $(TESTNAME)_rp$(READY_PROB_VAL)$(VDMA_VALIDATE_TAG)$(VDMA_STRESS_TAG)
 else ifeq ($(TESTNAME),vdma_timing)
   RUN_TAG := $(TESTNAME)$(VIDEO_VALIDATE_TAG)
+else ifeq ($(TESTNAME),multi_vdma)
+  RUN_TAG := $(TESTNAME)_taps$(MULTI_VDMA_TAPS)$(MVDMA_STRESS_TAG)$(MVDMA_SEED_TAG)$(MVDMA_ITERS_TAG)
 else ifeq ($(TESTNAME),axil_gpio)
   RUN_TAG := $(TESTNAME)
 else ifeq ($(TESTNAME),uart_axil_slave)
@@ -155,6 +167,8 @@ else ifeq ($(TESTNAME),vdma)
     ENV_FILE := $(TB_DIR)/tests/axi/test_vdma.sv
 else ifeq ($(TESTNAME),vdma_timing)
     ENV_FILE := $(TB_DIR)/tests/axi/test_vdma_timing.sv
+else ifeq ($(TESTNAME),multi_vdma)
+    ENV_FILE := $(TB_DIR)/tests/axi/test_multi_vdma.sv
 else ifeq ($(TESTNAME),axil_register)
     ENV_FILE := $(TB_DIR)/tests/axil/test_axil_register.sv
 else ifeq ($(TESTNAME),axil_gpio)
@@ -179,7 +193,15 @@ SIM_ARGS += $(if $(VDMA_STRESS),+VDMA_STRESS=$(VDMA_STRESS))
 SIM_ARGS += $(if $(CHECK_THROUGHPUT),+CHECK_THROUGHPUT=$(CHECK_THROUGHPUT))
 SIM_ARGS += $(if $(AXI_SLAVE_VERBOSE),+AXI_SLAVE_VERBOSE=$(AXI_SLAVE_VERBOSE))
 SIM_ARGS += $(if $(PNG_SRC),+PNG_SRC=$(PNG_SRC))
+SIM_ARGS += $(if $(PNG_SRC_DIR),+PNG_SRC_DIR=$(PNG_SRC_DIR))
 SIM_ARGS += $(if $(PNG_SINK_PREFIX),+PNG_SINK_PREFIX=$(PNG_SINK_PREFIX))
+SIM_ARGS += $(if $(MVDMA_PNG_DIR),+MVDMA_PNG_DIR=$(MVDMA_PNG_DIR))
+SIM_ARGS += $(if $(MVDMA_PNG_SRC_DIR),+MVDMA_PNG_SRC_DIR=$(MVDMA_PNG_SRC_DIR))
+SIM_ARGS += $(if $(MVDMA_PNG_OUT_DIR),+MVDMA_PNG_OUT_DIR=$(MVDMA_PNG_OUT_DIR))
+SIM_ARGS += $(if $(MULTI_VDMA_TAPS),+MULTI_VDMA_TAPS=$(MULTI_VDMA_TAPS))
+SIM_ARGS += $(if $(MVDMA_STRESS),+MVDMA_STRESS=$(MVDMA_STRESS))
+SIM_ARGS += $(if $(MVDMA_SEED),+MVDMA_SEED=$(MVDMA_SEED))
+SIM_ARGS += $(if $(MVDMA_ITERS),+MVDMA_ITERS=$(MVDMA_ITERS))
 
 # ------------------------
 # VERILATOR macros per test
@@ -240,9 +262,12 @@ else ifeq ($(TESTNAME),dma)
   VERILATOR_DEFS := +define+USE_DMA_TEST
 else ifeq ($(TESTNAME),vdma)
   VERILATOR_DEFS := +define+USE_VDMA_TEST
+else ifeq ($(TESTNAME),multi_vdma)
+  VERILATOR_DEFS := +define+USE_MULTI_VDMA_TEST
 else ifeq ($(TESTNAME),vdma_timing)
   VERILATOR_DEFS := +define+USE_VDMA_TIMING_TEST
   VERILATOR_DEFS += $(if $(VIDEO_VALIDATE),+define+VIDEO_VALIDATE)
+  VERILATOR_DEFS += $(if $(VIDEO_PNG),+define+VIDEO_PNG)
   VERILATOR_DEFS += $(if $(AFIFO_DEBUG),+define+AFIFO_DEBUG)
 else ifeq ($(TESTNAME),axil_register)
   VERILATOR_DEFS := +define+USE_AXIL_REGISTER

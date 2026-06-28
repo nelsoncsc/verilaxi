@@ -46,3 +46,5 @@ rtl/axi/snix_axi_vdma_frame_store.sv
 rtl/axi/snix_axi_vdma_s2mm.sv
 rtl/axi/snix_axi_vdma_mm2s.sv
 rtl/axi/snix_axi_vdma.sv
+rtl/axi/snix_axi_multi_vdma_frame_store.sv
+rtl/axi/snix_axi_multi_vdma.sv
