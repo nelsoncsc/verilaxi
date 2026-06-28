@@ -146,6 +146,9 @@ run_sim_sweep() {
     run_sim_case "video_adapter_errors" TESTNAME=video_adapter_errors
     run_sim_case "video_mode_clocks" TESTNAME=video_mode_clocks
     run_sim_case "video_rgb_cdc" TESTNAME=video_rgb_cdc
+    run_sim_case "video_rgb32" TESTNAME=video_rgb32
+    run_sim_case "video_csc_rgb_ycbcr" TESTNAME=video_csc_rgb_ycbcr
+    run_sim_case "video_csc_422" TESTNAME=video_csc_422
 
     run_sim_case "axil_register" TESTNAME=axil_register
     run_sim_case "axil_gpio" TESTNAME=axil_gpio
@@ -165,6 +168,11 @@ run_sim_sweep() {
     done
 
     run_sim_case "vdma rp=70" TESTNAME=vdma READY_PROB=70
+    run_sim_case "vdma_timing" TESTNAME=vdma_timing
+    run_sim_case "vdma_timing validate" TESTNAME=vdma_timing VIDEO_VALIDATE=1
+    run_sim_case "multi_vdma taps=1" TESTNAME=multi_vdma MULTI_VDMA_TAPS=1
+    run_sim_case "multi_vdma taps=2" TESTNAME=multi_vdma MULTI_VDMA_TAPS=2
+    run_sim_case "multi_vdma taps=3" TESTNAME=multi_vdma MULTI_VDMA_TAPS=3
 
     echo
     echo "SIM SWEEP COMPLETE: ${SIM_PASS}/${SIM_TOTAL} passed"
@@ -192,7 +200,7 @@ run_synth_sweep() {
     esac
 
     for target in "${targets[@]}"; do
-        for synth_name in axis_register uart_lite axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register axil_gpio uart_axil_slave uart_axil_master dma cdma vdma; do
+        for synth_name in axis_register uart_lite axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register axil_gpio uart_axil_slave uart_axil_master dma cdma vdma multi_vdma video_rgb32_pack video_rgb32_unpack video_rgb_to_ycbcr video_ycbcr_to_rgb video_csc_422 video_csc_422_expand; do
             run_synth_case \
                 "${synth_name} target=${target}" \
                 SYNTH_NAME="${synth_name}" SYNTH_TARGET="${target}"

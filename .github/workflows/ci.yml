@@ -159,6 +159,16 @@ jobs:
       - name: vdma_timing  (32x16 VIDEO_VALIDATE)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=vdma_timing VIDEO_VALIDATE=1
 
+      # ── Multi-tap temporal VDMA ──────────────────────────────────────────
+      - name: multi_vdma  (NUM_TAPS=1)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=multi_vdma MULTI_VDMA_TAPS=1
+
+      - name: multi_vdma  (NUM_TAPS=2)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=multi_vdma MULTI_VDMA_TAPS=2
+
+      - name: multi_vdma  (NUM_TAPS=3)
+        run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make clean run OBJ_DIR=$CI_OBJ_DIR TESTNAME=multi_vdma MULTI_VDMA_TAPS=3
+
       # ── Synthesis (Yosys) ─────────────────────────────────────────────────
       - name: synth-all (generic)
         run: docker run --rm -v "$PWD":/workspace -w /workspace $DOCKER_IMAGE make synth-all SYNTH_TARGET=generic

@@ -2,7 +2,7 @@
 # Synthesis (Yosys)
 # ==================================================
 SYNTH_DIR     := $(WORK_DIR)/synth
-VALID_SYNTHS  := axis_register uart_lite axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register axil_gpio uart_axil_slave uart_axil_master dma cdma vdma
+VALID_SYNTHS  := axis_register uart_lite axis_arbiter axis_fifo axis_fifo_pkt axis_afifo axis_afifo_pkt axis_upsizer axis_downsizer axis_rr_converter axis_rr_upsizer axis_rr_downsizer axil_register axil_gpio uart_axil_slave uart_axil_master dma cdma vdma multi_vdma video_rgb32_pack video_rgb32_unpack video_rgb_to_ycbcr video_ycbcr_to_rgb video_csc_422 video_csc_422_expand
 VALID_TARGETS := generic artix7
 SYNTH_NAME    ?= axis_fifo
 SYNTH_TARGET  ?= generic
@@ -52,6 +52,27 @@ else ifeq ($(SYNTH_NAME),cdma)
   SYNTH_PARAM :=
 else ifeq ($(SYNTH_NAME),vdma)
   SYNTH_TOP   := snix_axi_vdma
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),multi_vdma)
+  SYNTH_TOP   := snix_axi_multi_vdma
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),video_rgb32_pack)
+  SYNTH_TOP   := snix_video_rgb32_pack
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),video_rgb32_unpack)
+  SYNTH_TOP   := snix_video_rgb32_unpack
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),video_rgb_to_ycbcr)
+  SYNTH_TOP   := snix_video_rgb_to_ycbcr
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),video_ycbcr_to_rgb)
+  SYNTH_TOP   := snix_video_ycbcr_to_rgb
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),video_csc_422)
+  SYNTH_TOP   := snix_video_csc_422
+  SYNTH_PARAM :=
+else ifeq ($(SYNTH_NAME),video_csc_422_expand)
+  SYNTH_TOP   := snix_video_csc_422_expand
   SYNTH_PARAM :=
 else ifeq ($(SYNTH_NAME),axis_upsizer)
   SYNTH_TOP   := snix_axis_upsizer

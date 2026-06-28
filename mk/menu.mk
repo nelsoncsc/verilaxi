@@ -33,6 +33,8 @@ menu:
 		echo " 26) video_rgb32"; \
 		echo " 27) video_csc_rgb_ycbcr"; \
 		echo " 28) video_csc_422"; \
+		echo " 29) vdma_timing"; \
+		echo " 30) multi_vdma"; \
 		echo ""; \
 		echo "Commands:"; \
 		echo "  s) synth — synthesize a design with Yosys"; \
@@ -40,7 +42,7 @@ menu:
 		echo "  c) clean all"; \
 		echo "  q) quit"; \
 		echo ""; \
-		echo "Select a test [1-28], command, or q to quit:"; \
+		echo "Select a test [1-30], command, or q to quit:"; \
 		read -r choice; \
 		case "$$choice" in \
 			1) \
@@ -245,6 +247,21 @@ menu:
 			$(MAKE) clean run TESTNAME=video_csc_422; \
 			code=$$?; \
 			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		29) \
+			echo "You selected VDMA_TIMING test."; \
+			echo "  VIDEO_VALIDATE=0  small 8x4 smoke profile (default)"; \
+			echo "  VIDEO_VALIDATE=1  larger 32x16 timing-aware profile"; \
+			read -p "Enter VIDEO_VALIDATE (0 or 1, default=0): " VIDEO_VALIDATE; \
+			$(MAKE) clean run TESTNAME=vdma_timing VIDEO_VALIDATE=$$VIDEO_VALIDATE; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
+		30) \
+			echo "You selected MULTI_VDMA test."; \
+			echo "  MULTI_VDMA_TAPS selects temporal read taps (1-3 in directed tests; default=2)"; \
+			read -p "Enter MULTI_VDMA_TAPS (1-3, default=2): " MULTI_VDMA_TAPS; \
+			$(MAKE) clean run TESTNAME=multi_vdma MULTI_VDMA_TAPS=$$MULTI_VDMA_TAPS; \
+			code=$$?; \
+			if [ $$code -ne 0 ]; then echo "Simulation failed. Exiting menu."; break; else echo "Simulation successful. Exiting menu."; break; fi ;; \
 		s|S) \
 				echo "Select design to synthesize:"; \
 				echo "  1) axis_register"; \
@@ -266,8 +283,15 @@ menu:
 				echo " 17) axis_rr_upsizer (rational up, IN=16 OUT=24)"; \
 				echo " 18) axis_rr_downsizer (rational down, IN=24 OUT=16)"; \
 				echo " 19) vdma"; \
-				echo " 20) all"; \
-				read -p "Enter choice [1-20]: " schoice; \
+				echo " 20) multi_vdma"; \
+				echo " 21) video_rgb32_pack"; \
+				echo " 22) video_rgb32_unpack"; \
+				echo " 23) video_rgb_to_ycbcr"; \
+				echo " 24) video_ycbcr_to_rgb"; \
+				echo " 25) video_csc_422"; \
+				echo " 26) video_csc_422_expand"; \
+				echo " 27) all"; \
+				read -p "Enter choice [1-27]: " schoice; \
 				echo "Synthesis target:"; \
 				echo "  g) generic  -- technology-independent (default)"; \
 				echo "  a) artix7   -- Xilinx 7-series (LUT6/FDRE/CARRY4 cells)"; \
@@ -296,7 +320,14 @@ menu:
 					17) $(MAKE) synth SYNTH_NAME=axis_rr_upsizer    SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					18) $(MAKE) synth SYNTH_NAME=axis_rr_downsizer  SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					19) $(MAKE) synth SYNTH_NAME=vdma               SYNTH_TARGET=$$SYNTH_TARGET ;; \
-					20) $(MAKE) synth-all                           SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					20) $(MAKE) synth SYNTH_NAME=multi_vdma         SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					21) $(MAKE) synth SYNTH_NAME=video_rgb32_pack   SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					22) $(MAKE) synth SYNTH_NAME=video_rgb32_unpack SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					23) $(MAKE) synth SYNTH_NAME=video_rgb_to_ycbcr SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					24) $(MAKE) synth SYNTH_NAME=video_ycbcr_to_rgb SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					25) $(MAKE) synth SYNTH_NAME=video_csc_422      SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					26) $(MAKE) synth SYNTH_NAME=video_csc_422_expand SYNTH_TARGET=$$SYNTH_TARGET ;; \
+					27) $(MAKE) synth-all                           SYNTH_TARGET=$$SYNTH_TARGET ;; \
 					*) echo "Invalid choice." ;; \
 				esac ;; \
 			h|H) $(MAKE) help ;; \
