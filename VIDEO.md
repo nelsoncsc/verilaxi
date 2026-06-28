@@ -9,6 +9,12 @@ through Yosys. The general AXI/AXI-Lite/AXI-Stream VIP and DMA/CDMA reference
 lives in the [Developer Guide](verilaxi_developer_guide.md); **all video material
 lives here.**
 
+For a narrative explanation before diving into this reference, see the Sistenix
+posts [Video basics for hardware engineers](https://sistenix.com/video_basics.html)
+and [Video DMA: triple-buffering, genlock and temporal taps](https://sistenix.com/vdma.html).
+The posts explain the design motivation and theory; this document is the
+implementation reference for the RTL, tests, registers, and validation commands.
+
 ## Contents
 1. [Pipeline at a glance](#1-pipeline-at-a-glance)
 2. [Video timing package](#2-video-timing-package)
