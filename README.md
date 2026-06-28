@@ -4,7 +4,7 @@
 
 It provides simple, task-based **AXI**, **AXI-Lite**, and **AXI-Stream** drivers, monitors, and test environments designed for fast RTL bring-up — without UVM.
 
-For a deeper walkthrough of the architecture, module inventory, register maps, and verification flow, see the [Developer Guide](verilaxi_developer_guide.md).
+For a deeper walkthrough of the architecture, module inventory, register maps, and verification flow, see the [Developer Guide](verilaxi_developer_guide.md). For the video IP pipeline, both VDMA engines, and the real-image (PNG) round-trip harness, see [VIDEO.md](VIDEO.md).
 
 ---
 
@@ -161,8 +161,6 @@ make run TESTNAME=dma TESTTYPE=3 READY_PROB=80
 
 `snix_axi_vdma` is a full-frame scatter-gather DMA for progressive video. A capture engine (S2MM) writes incoming pixel data into AXI4 memory one frame at a time. A triple-buffer frame store rotates through three independent buffer slots and tracks which is newest. A playback engine (MM2S) reads frames back out over AXI4 and presents them on an AXI-Stream output. Software controls everything through a 16-register AXI-Lite CSR bank.
 
-![VDMA block diagram](docs/vdma.svg)
-
 Key features:
 - **Triple-buffer frame store** with automatic slot rotation, newest-frame tracking, and overwrite detection
 - **Genlock** — playback restarts only after a new capture frame completes, eliminating display tearing
@@ -182,7 +180,7 @@ scripts/vdma_validate.sh
 
 The validation profile enforces hard minimum throughput assertions on both paths. Measured on the 64×32 frame: MM2S sustains ~88% bus efficiency across tested `READY_PROB` settings; S2MM reaches ~86% with no memory backpressure and scales with injected source-stall conditions. Remaining optimisation work is mainly reducing per-line/burst turnaround gaps on the write path.
 
-![VDMA simulation waveform](docs/vdma_sim.png)
+A multi-tap **temporal** variant, `snix_axi_multi_vdma`, exposes several past frames at once (tap 0 = newest, tap N−1 = oldest) from an (N+1)-slot frame store — for temporal denoise, motion detection, and frame differencing. It is exercised by targeted directed tests plus a real-image (PNG) round-trip with per-frame throughput instrumentation. See **[VIDEO.md](VIDEO.md)** for the full video pipeline, both VDMA engines, the PNG harness, and the squirrel motion round-trip.
 
 ### Video Infrastructure
 

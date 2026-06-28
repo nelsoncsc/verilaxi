@@ -1,0 +1,270 @@
+<mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1300" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <mxCell id="dut" parent="1" style="rounded=1;whiteSpace=wrap;html=1;pointerEvents=0;align=center;verticalAlign=top;dashed=1;fillColor=none;" value="" vertex="1">
+      <mxGeometry height="1100" width="1330" x="240" y="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="dut_title" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:18px;&quot;&gt;SNIX_AXI_MULTI_VDMA (DUT) — 2-tap temporal readout&lt;/font&gt;" vertex="1">
+      <mxGeometry height="26" width="1190" x="380" y="77" as="geometry"/>
+    </mxCell>
+    <mxCell id="title" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:22px;&quot;&gt;test_multi_vdma — 1× S2MM capture, 2× MM2S taps&lt;/font&gt;" vertex="1">
+      <mxGeometry height="34" width="1190" x="360" y="36" as="geometry"/>
+    </mxCell>
+
+    <!-- S2MM FSM, aligned with the original VDMA diagram -->
+    <mxCell id="s2mm_state" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="130" width="294" x="660" y="120" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_state_label" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;state&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;next_state&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="290" x="662" y="122" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_fsm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCE9F;" value="&lt;font style=&quot;font-size:22px;&quot;&gt;S2MM FSM&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px;&quot;&gt;capture writer&lt;/font&gt;" vertex="1">
+      <mxGeometry height="60" width="150" x="710" y="150" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_reg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="110" width="90" x="1024" y="125" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_tri" parent="1" style="triangle;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="28" width="28" x="1024" y="185" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_bubble" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" value="" vertex="1">
+      <mxGeometry height="21" width="21" x="1079" y="225" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_dq" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;D&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;Q&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="80" x="1024" y="137" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_state_fwd" edge="1" parent="1" source="s2mm_state" target="s2mm_reg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_state_back" edge="1" parent="1" source="s2mm_reg" target="s2mm_state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1154" y="153"/><mxPoint x="1154" y="105"/><mxPoint x="624" y="105"/><mxPoint x="624" y="152"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- shared logical frame memory -->
+    <mxCell id="ram" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="230" width="200" x="707" y="430" as="geometry"/>
+    </mxCell>
+    <mxCell id="ram_title" parent="1" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:18px;&quot;&gt;AXI_SLAVE(RAM)&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px;&quot;&gt;N+1 frame slots&lt;/font&gt;" vertex="1">
+      <mxGeometry height="40" width="200" x="707" y="434" as="geometry"/>
+    </mxCell>
+    <mxCell id="ram_wave_box" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFE599;" value="" vertex="1">
+      <mxGeometry height="50" width="130" x="742" y="494" as="geometry"/>
+    </mxCell>
+    <mxCell id="ram_wave0" parent="1" style="verticalLabelPosition=bottom;shadow=0;dashed=0;align=center;html=1;verticalAlign=top;shape=mxgraph.electrical.waveforms.pulse_1;strokeWidth=2;strokeColor=#009900;" value="" vertex="1">
+      <mxGeometry height="30" width="63" x="744" y="505" as="geometry"/>
+    </mxCell>
+    <mxCell id="ram_wave1" parent="1" style="verticalLabelPosition=bottom;shadow=0;dashed=0;align=center;html=1;verticalAlign=top;shape=mxgraph.electrical.waveforms.pulse_1;strokeWidth=2;strokeColor=#009900;" value="" vertex="1">
+      <mxGeometry height="30" width="63" x="806" y="505" as="geometry"/>
+    </mxCell>
+    <mxCell id="ram_if" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#66B2FF;" value="virtual&amp;nbsp;&lt;div&gt;axi4_if(clk)&lt;/div&gt;" vertex="1">
+      <mxGeometry height="95" width="95" x="759" y="555" as="geometry"/>
+    </mxCell>
+
+    <!-- multi-frame store / tap age selector -->
+    <mxCell id="frame_store" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B3CFFF;align=center;verticalAlign=top;" value="&lt;font style=&quot;font-size:17px;&quot;&gt;SNIX_AXI_MULTI_VDMA_FRAME_STORE&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px;&quot;&gt;slot rotation · tap age queue&lt;br&gt;tap0=newest · tap1=previous&lt;/font&gt;" vertex="1">
+      <mxGeometry height="260" width="330" x="1180" y="410" as="geometry"/>
+    </mxCell>
+    <mxCell id="slot0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;slot 0&lt;/font&gt;" vertex="1">
+      <mxGeometry height="125" width="85" x="1204" y="525" as="geometry"/>
+    </mxCell>
+    <mxCell id="slot1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;slot 1&lt;/font&gt;" vertex="1">
+      <mxGeometry height="125" width="85" x="1302" y="525" as="geometry"/>
+    </mxCell>
+    <mxCell id="slot2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;slot 2&lt;/font&gt;" vertex="1">
+      <mxGeometry height="125" width="85" x="1400" y="525" as="geometry"/>
+    </mxCell>
+
+    <!-- two MM2S tap FSMs -->
+    <mxCell id="tap0_state" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="130" width="294" x="660" y="745" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_label" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;state&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;next_state&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="290" x="662" y="747" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_fsm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCE9F;" value="&lt;font style=&quot;font-size:18px;&quot;&gt;MM2S TAP0 FSM&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px;&quot;&gt;newest frame&lt;/font&gt;" vertex="1">
+      <mxGeometry height="60" width="170" x="700" y="775" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_reg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="110" width="90" x="1024" y="750" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_tri" parent="1" style="triangle;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="28" width="28" x="1024" y="810" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_bubble" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" value="" vertex="1">
+      <mxGeometry height="21" width="21" x="1079" y="850" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_dq" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;D&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;Q&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="80" x="1024" y="762" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_fwd" edge="1" parent="1" source="tap0_state" target="tap0_reg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_back" edge="1" parent="1" source="tap0_reg" target="tap0_state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1154" y="778"/><mxPoint x="1154" y="715"/><mxPoint x="624" y="715"/><mxPoint x="624" y="777"/></Array></mxGeometry>
+    </mxCell>
+
+    <mxCell id="tap1_state" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="130" width="294" x="660" y="965" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_label" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;state&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;next_state&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="290" x="662" y="967" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_fsm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCE9F;" value="&lt;font style=&quot;font-size:18px;&quot;&gt;MM2S TAP1 FSM&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px;&quot;&gt;previous frame&lt;/font&gt;" vertex="1">
+      <mxGeometry height="60" width="170" x="700" y="995" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_reg" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="110" width="90" x="1024" y="970" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_tri" parent="1" style="triangle;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="28" width="28" x="1024" y="1030" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_bubble" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" value="" vertex="1">
+      <mxGeometry height="21" width="21" x="1079" y="1070" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_dq" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;D&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;Q&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="80" x="1024" y="982" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_fwd" edge="1" parent="1" source="tap1_state" target="tap1_reg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_back" edge="1" parent="1" source="tap1_reg" target="tap1_state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1154" y="998"/><mxPoint x="1154" y="1135"/><mxPoint x="624" y="1135"/><mxPoint x="624" y="997"/></Array></mxGeometry>
+    </mxCell>
+
+    <!-- AXIS FIFOs and VIP blocks -->
+    <mxCell id="cap_fifo" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#97D077;" value="&lt;font style=&quot;font-size:16px;&quot;&gt;SNIX_AXIS_FIFO&lt;/font&gt;" vertex="1">
+      <mxGeometry height="60" width="220" x="351" y="155" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_fifo" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#97D077;" value="&lt;font style=&quot;font-size:16px;&quot;&gt;SNIX_AXIS_FIFO&lt;/font&gt;" vertex="1">
+      <mxGeometry height="60" width="220" x="352" y="780" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_fifo" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#97D077;" value="&lt;font style=&quot;font-size:16px;&quot;&gt;SNIX_AXIS_FIFO&lt;/font&gt;" vertex="1">
+      <mxGeometry height="60" width="220" x="352" y="1000" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="axis_src" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="230" width="190" x="16" y="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="axis_src_title" parent="1" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:17px;&quot;&gt;AXIS_SOURCE&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;pattern / PNG frame&lt;/font&gt;" vertex="1">
+      <mxGeometry height="40" width="190" x="16" y="74" as="geometry"/>
+    </mxCell>
+    <mxCell id="axis_src_wave" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFE599;" value="" vertex="1">
+      <mxGeometry height="50" width="130" x="43" y="136" as="geometry"/>
+    </mxCell>
+    <mxCell id="axis_src_if" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#66B2FF;" value="virtual&amp;nbsp;&lt;div&gt;axis_if(clk)&lt;/div&gt;" vertex="1">
+      <mxGeometry height="95" width="95" x="61" y="198" as="geometry"/>
+    </mxCell>
+    <mxCell id="axil_bfm" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="230" width="190" x="16" y="420" as="geometry"/>
+    </mxCell>
+    <mxCell id="axil_title" parent="1" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:17px;&quot;&gt;AXIL_MASTER&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;CSR program / poll&lt;/font&gt;" vertex="1">
+      <mxGeometry height="40" width="190" x="16" y="424" as="geometry"/>
+    </mxCell>
+    <mxCell id="axil_wave" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFE599;" value="" vertex="1">
+      <mxGeometry height="50" width="130" x="43" y="486" as="geometry"/>
+    </mxCell>
+    <mxCell id="axil_if" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#66B2FF;" value="virtual&amp;nbsp;&lt;div&gt;axil_if(clk)&lt;/div&gt;" vertex="1">
+      <mxGeometry height="95" width="95" x="61" y="548" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_sink" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="190" width="190" x="16" y="720" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_sink_title" parent="1" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:17px;&quot;&gt;AXIS_SINK TAP0&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;newest frame checker&lt;/font&gt;" vertex="1">
+      <mxGeometry height="40" width="190" x="16" y="724" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap0_if" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#66B2FF;" value="virtual&amp;nbsp;&lt;div&gt;axis_if(clk)&lt;/div&gt;" vertex="1">
+      <mxGeometry height="95" width="95" x="61" y="808" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_sink" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+      <mxGeometry height="190" width="190" x="16" y="940" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_sink_title" parent="1" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:17px;&quot;&gt;AXIS_SINK TAP1&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;previous frame checker&lt;/font&gt;" vertex="1">
+      <mxGeometry height="40" width="190" x="16" y="944" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_if" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#66B2FF;" value="virtual&amp;nbsp;&lt;div&gt;axis_if(clk)&lt;/div&gt;" vertex="1">
+      <mxGeometry height="95" width="95" x="61" y="1028" as="geometry"/>
+    </mxCell>
+
+    <!-- CSR block -->
+    <mxCell id="csr" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;" value="&lt;font style=&quot;font-size:16px;&quot;&gt;SNIX_AXI_MULTI_VDMA_CSR&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;&quot;&gt;WR_CTRL · RD_CTRL · TAP_STATUS&lt;br&gt;FRAME_ADDR0/1/2 · IRQ_ACK&lt;/font&gt;" vertex="1">
+      <mxGeometry height="120" width="220" x="350" y="475" as="geometry"/>
+    </mxCell>
+
+    <!-- aligned datapath arrows -->
+    <mxCell id="src_to_fifo" edge="1" parent="1" source="axis_src" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" value="">
+      <mxGeometry relative="1" as="geometry"><mxPoint x="351" y="185" as="targetPoint"/></mxGeometry>
+    </mxCell>
+    <mxCell id="fifo_to_s2mm" edge="1" parent="1" source="cap_fifo" target="s2mm_state" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2mm_to_ram" edge="1" parent="1" source="s2mm_state" target="ram" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="ram_to_tap0" edge="1" parent="1" source="ram" target="tap0_state" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=0.32;exitY=1;exitDx=0;exitDy=0;entryX=0.32;entryY=0;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="ram_to_tap1" edge="1" parent="1" source="ram" target="tap1_state" style="edgeStyle=orthogonalEdgeStyle;shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=0.68;exitY=1;exitDx=0;exitDy=0;entryX=0.68;entryY=0;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="843" y="700"/><mxPoint x="860" y="700"/><mxPoint x="860" y="930"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="tap0_to_fifo" edge="1" parent="1" source="tap0_state" target="tap0_fifo" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="tap1_to_fifo" edge="1" parent="1" source="tap1_state" target="tap1_fifo" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="fifo_to_tap0_sink" edge="1" parent="1" source="tap0_fifo" target="tap0_sink" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.47;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="fifo_to_tap1_sink" edge="1" parent="1" source="tap1_fifo" target="tap1_sink" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.47;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="axil_to_csr" edge="1" parent="1" source="axil_bfm" target="csr" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;fillColor=#000000;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- labels -->
+    <mxCell id="lab_s_axis" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;s_axis_if&lt;/font&gt;" vertex="1">
+      <mxGeometry height="24" width="120" x="236" y="153" as="geometry"/>
+    </mxCell>
+    <mxCell id="lab_axis_in" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;axis_if&lt;/font&gt;" vertex="1">
+      <mxGeometry height="24" width="60" x="585" y="154" as="geometry"/>
+    </mxCell>
+    <mxCell id="lab_wr" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:15px;&quot;&gt;s2mm_axi4_if&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="150" x="807" y="320" as="geometry"/>
+    </mxCell>
+    <mxCell id="lab_rd0" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:15px;&quot;&gt;mm2s_axi4_if[0]&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="150" x="650" y="680" as="geometry"/>
+    </mxCell>
+    <mxCell id="lab_rd1" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:15px;&quot;&gt;mm2s_axi4_if[1]&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="150" x="850" y="900" as="geometry"/>
+    </mxCell>
+    <mxCell id="lab_tap0" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;m_axis_if[0]&lt;/font&gt;" vertex="1">
+      <mxGeometry height="24" width="120" x="230" y="784" as="geometry"/>
+    </mxCell>
+    <mxCell id="lab_tap1" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;m_axis_if[1]&lt;/font&gt;" vertex="1">
+      <mxGeometry height="24" width="120" x="230" y="1004" as="geometry"/>
+    </mxCell>
+    <mxCell id="lab_axil" parent="1" style="text;html=1;align=center;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:14px;&quot;&gt;axil_if&lt;/font&gt;" vertex="1">
+      <mxGeometry height="24" width="120" x="240" y="502" as="geometry"/>
+    </mxCell>
+
+    <!-- frame-store control/tap select arrows -->
+    <mxCell id="s2mm_to_store" edge="1" parent="1" source="s2mm_state" target="frame_store" style="edgeStyle=orthogonalEdgeStyle;endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;write_slot&lt;/font&gt;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="954" y="280"/><mxPoint x="1345" y="280"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="store_to_tap0" edge="1" parent="1" source="frame_store" target="tap0_state" style="edgeStyle=orthogonalEdgeStyle;endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.35;entryDx=0;entryDy=0;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;tap0_slot&lt;/font&gt;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1345" y="720"/><mxPoint x="990" y="720"/><mxPoint x="990" y="791"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="store_to_tap1" edge="1" parent="1" source="frame_store" target="tap1_state" style="edgeStyle=orthogonalEdgeStyle;endArrow=classic;html=1;rounded=0;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.35;entryDx=0;entryDy=0;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;tap1_slot&lt;/font&gt;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1428" y="940"/><mxPoint x="990" y="940"/><mxPoint x="990" y="1011"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="csr_to_store" edge="1" parent="1" source="csr" target="frame_store" style="edgeStyle=orthogonalEdgeStyle;endArrow=classic;html=1;rounded=0;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;FRAME_CTRL&lt;/font&gt;">
+      <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="650" y="535"/><mxPoint x="1140" y="535"/></Array></mxGeometry>
+    </mxCell>
+    <mxCell id="legend" parent="1" style="text;html=1;align=left;strokeColor=none;fillColor=none;" value="&lt;font style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;2-tap rule:&lt;/b&gt; 1 writer + 2 independent MM2S readers; frame store needs NUM_TAPS+1 slots, so 2 taps use at least 3 slots.&lt;/font&gt;" vertex="1">
+      <mxGeometry height="30" width="1200" x="360" y="1205" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>

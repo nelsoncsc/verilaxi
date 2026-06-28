@@ -1,0 +1,97 @@
+<svg viewBox="0 0 1100 470" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#374151"/>
+    </marker>
+    <marker id="arrL" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#374151"/>
+    </marker>
+    <style>
+      .box   { fill:#ffffff; stroke:#475569; stroke-width:1.5; rx:7; }
+      .cdc   { fill:#fff7ed; stroke:#c2410c; stroke-width:1.5; }
+      .lbl   { font-size:13px; fill:#1f2937; text-anchor:middle; }
+      .sub   { font-size:11px; fill:#6b7280; text-anchor:middle; }
+      .flow  { stroke:#374151; stroke-width:1.6; fill:none; }
+      .dom   { font-size:13px; font-weight:600; }
+      .title { font-size:18px; font-weight:600; fill:#111827; }
+      .note  { font-size:12px; fill:#6b7280; }
+    </style>
+  </defs>
+
+  <!-- clock-domain bands -->
+  <rect x="10"  y="58" width="425" height="352" fill="#eaf2fb"/>
+  <rect x="435" y="58" width="655" height="352" fill="#fdf1e3"/>
+  <line x1="435" y1="50" x2="435" y2="418" stroke="#c2410c" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="300" y="46" class="dom" fill="#1d4ed8" text-anchor="middle">pixel-clock domain</text>
+  <text x="760" y="46" class="dom" fill="#c2410c" text-anchor="middle">AXI-clock domain</text>
+  <text x="435" y="436" class="sub" text-anchor="middle">clock-domain crossing (async FIFO)</text>
+
+  <text x="30" y="30" class="title">Video Infrastructure Pipeline</text>
+
+  <!-- ===== capture path (top, left to right) ===== -->
+  <text x="30" y="92" class="note" font-weight="600">Capture</text>
+
+  <rect class="box" x="30"  y="100" width="130" height="58"/>
+  <text x="95"  y="124" class="lbl">Pattern /</text>
+  <text x="95"  y="140" class="lbl">Frame Source</text>
+
+  <rect class="box" x="205" y="100" width="130" height="58"/>
+  <text x="270" y="126" class="lbl">video_to_axis</text>
+  <text x="270" y="142" class="sub">DE/SOF/EOL → AXIS</text>
+
+  <rect class="box cdc" x="370" y="100" width="130" height="58"/>
+  <text x="435" y="124" class="lbl">capture_cdc</text>
+  <text x="435" y="140" class="sub">async FIFO</text>
+
+  <rect class="box" x="555" y="100" width="130" height="58"/>
+  <text x="620" y="124" class="lbl">rgb24 / rgb32</text>
+  <text x="620" y="140" class="lbl">pack</text>
+
+  <rect class="box" x="720" y="100" width="150" height="58"/>
+  <text x="795" y="124" class="lbl">optional CSC</text>
+  <text x="795" y="140" class="sub">rgb→ycbcr · 4:2:2</text>
+
+  <rect class="box" x="905" y="100" width="160" height="58"/>
+  <text x="985" y="124" class="lbl">AXI-Stream</text>
+  <text x="985" y="140" class="lbl">to VDMA S2MM</text>
+
+  <path class="flow" marker-end="url(#arr)" d="M160,129 H203"/>
+  <path class="flow" marker-end="url(#arr)" d="M335,129 H368"/>
+  <path class="flow" marker-end="url(#arr)" d="M500,129 H553"/>
+  <path class="flow" marker-end="url(#arr)" d="M685,129 H718"/>
+  <path class="flow" marker-end="url(#arr)" d="M870,129 H903"/>
+
+  <!-- ===== playback path (bottom, right to left) ===== -->
+  <text x="30" y="262" class="note" font-weight="600">Playback</text>
+
+  <rect class="box" x="905" y="270" width="160" height="58"/>
+  <text x="985" y="294" class="lbl">AXI-Stream</text>
+  <text x="985" y="310" class="lbl">from VDMA MM2S</text>
+
+  <rect class="box" x="720" y="270" width="150" height="58"/>
+  <text x="795" y="294" class="lbl">optional CSC</text>
+  <text x="795" y="310" class="sub">ycbcr→rgb · 4:2:2↑</text>
+
+  <rect class="box" x="555" y="270" width="130" height="58"/>
+  <text x="620" y="294" class="lbl">rgb24 / rgb32</text>
+  <text x="620" y="310" class="lbl">unpack</text>
+
+  <rect class="box cdc" x="370" y="270" width="130" height="58"/>
+  <text x="435" y="294" class="lbl">display_cdc</text>
+  <text x="435" y="310" class="sub">async FIFO</text>
+
+  <rect class="box" x="205" y="270" width="130" height="58"/>
+  <text x="270" y="296" class="lbl">axis_to_video</text>
+  <text x="270" y="312" class="sub">AXIS → DE/SOF/EOL</text>
+
+  <rect class="box" x="30"  y="270" width="130" height="58"/>
+  <text x="95"  y="303" class="lbl">Display</text>
+
+  <path class="flow" marker-end="url(#arrL)" d="M905,299 H872"/>
+  <path class="flow" marker-end="url(#arrL)" d="M720,299 H687"/>
+  <path class="flow" marker-end="url(#arrL)" d="M555,299 H502"/>
+  <path class="flow" marker-end="url(#arrL)" d="M370,299 H337"/>
+  <path class="flow" marker-end="url(#arrL)" d="M205,299 H162"/>
+
+  <text x="30" y="462" class="note">SOF rides on tuser[0]; EOL maps to tlast. Optional CSC / width-conversion stages are inserted in-line on the AXI side.</text>
+</svg>
